@@ -14,7 +14,7 @@ find_package(HPX_OpenMP)
 if(MSVC)
   set(boost_library_dependencies)
 else()
-  set(boost_library_dependencies ${BOOST_PROGRAM_OPTIONS_LIBRARY} ${BOOST_SYSTEM_LIBRARY} ${BOOST_CHRONO_LIBRARY})
+  set(boost_library_dependencies ${BOOST_PROGRAM_OPTIONS_LIBRARY} ${BOOST_SYSTEM_LIBRARY} ${BOOST_DATE_TIME_LIBRARY} ${BOOST_CHRONO_LIBRARY})
 endif()
 
 set(benchmarks
