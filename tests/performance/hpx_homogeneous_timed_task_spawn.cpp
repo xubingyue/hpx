@@ -79,8 +79,6 @@ std::string format_build_date(std::string timestamp)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-
-///////////////////////////////////////////////////////////////////////////////
 void print_results(
     boost::uint64_t cores
   , double walltime
@@ -387,8 +385,8 @@ int hpx_main(
             // suspended tasks than tasks requested.
             no_suspend_step = (tasks_per_feeder / gcd) - suspend_step;
 
-            std::cout << "ns_step: " << no_suspend_step << "\n"
-                      << "s_step: " << suspend_step << "\n";
+            //std::cout << "ns_step: " << no_suspend_step << "\n"
+            //          << "s_step: " << suspend_step << "\n";
         }
 
         ///////////////////////////////////////////////////////////////////////
