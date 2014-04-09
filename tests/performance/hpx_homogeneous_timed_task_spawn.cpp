@@ -209,7 +209,7 @@ void stage_worker_static_balanced(
 {
     if (suspend)
         hpx::threads::register_thread_plain(
-            invoke_worker_timed_suspension
+            &invoke_worker_timed_suspension
           , "invoke_worker_timed_suspension"
           , hpx::threads::pending
           , false
@@ -218,7 +218,7 @@ void stage_worker_static_balanced(
             );
     else
         hpx::threads::register_thread_plain(
-            invoke_worker_timed_no_suspension
+            &invoke_worker_timed_no_suspension
           , "invoke_worker_timed_no_suspension"
           , hpx::threads::pending
           , false
@@ -234,7 +234,7 @@ void stage_worker_static_imbalanced(
 {
     if (suspend)
         hpx::threads::register_thread_plain(
-            invoke_worker_timed_suspension
+            &invoke_worker_timed_suspension
           , "invoke_worker_timed_suspension"
           , hpx::threads::pending
           , false
@@ -243,7 +243,7 @@ void stage_worker_static_imbalanced(
             );
     else
         hpx::threads::register_thread_plain(
-            invoke_worker_timed_no_suspension
+            &invoke_worker_timed_no_suspension
           , "invoke_worker_timed_no_suspension"
           , hpx::threads::pending
           , false
@@ -259,14 +259,14 @@ void stage_worker_round_robin(
 {
     if (suspend)
         hpx::threads::register_thread_plain(
-            invoke_worker_timed_suspension
+            &invoke_worker_timed_suspension
           , "invoke_worker_timed_suspension"
           , hpx::threads::pending
           , false
             );
     else
         hpx::threads::register_thread_plain(
-            invoke_worker_timed_no_suspension
+            &invoke_worker_timed_no_suspension
           , "invoke_worker_timed_no_suspension"
           , hpx::threads::pending
           , false
@@ -434,7 +434,7 @@ int hpx_main(
         {
             if (num_thread == i) continue;
     
-            register_work(boost::bind(stage_workers
+            register_work(boost::bind(&stage_workers
                                     , i
                                     , tasks_per_feeder
                                     , stage_worker
