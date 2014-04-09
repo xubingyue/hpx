@@ -58,8 +58,7 @@ void print_results(
     {
         cout << "# BENCHMARK: " << benchmark_name << "\n";
 
-        cout << "# VERSION: " << HPX_GIT_COMMIT << " "
-                 << format_build_date(__DATE__) << "\n"
+        cout << "# VERSION: " << format_build_date(__DATE__) << "\n"
              << "#\n";
 
         // Note that if we change the number of fields above, we have to
@@ -69,7 +68,7 @@ void print_results(
                 "## 0:DELAY:Delay [micro-seconds] - Independent Variable\n"
                 "## 1:TASKS:# of Tasks - Independent Variable\n"
                 "## 2:OSTHRDS:OS-threads - Independent Variable\n"
-                "## 3:WTIME_THR:Total Walltime/Thread [seconds]\n"
+                "## 3:WTIME_THR:Total Walltime/Thread [micro-seconds]\n"
                 ;
     }
 
@@ -81,13 +80,21 @@ void print_results(
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-void invoke_n_workers(
-    boost::barrier& b
-  , double& elapsed
+void invoke_n_workers_nowait(
+    double& elapsed
   , boost::uint64_t workers
     )
 {
-    b.wait();
+    // Warmup.
+    for (boost::uint64_t i = 0; i < tasks; ++i)
+    {
+        worker_timed(delay);
+    }
+
+    for (boost::uint64_t i = 0; i < tasks; ++i)
+    {
+        worker_timed(delay);
+    }
 
     // Start the clock.
     high_resolution_timer t;
@@ -100,6 +107,17 @@ void invoke_n_workers(
     elapsed = t.elapsed();
 }
 
+void invoke_n_workers(
+    boost::barrier& b
+  , double& elapsed
+  , boost::uint64_t workers
+    )
+{
+    b.wait();
+
+    invoke_n_workers_nowait(elapsed, workers);
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 int app_main(
     variables_map& vm
@@ -108,20 +126,27 @@ int app_main(
     if (0 == tasks)
         throw std::invalid_argument("error: count of 0 tasks specified\n");
 
-    std::vector<double> elapsed(threads);
+    std::vector<double> elapsed(threads - 1);
     boost::thread_group workers;
-    boost::barrier b(threads);
+    boost::barrier b(threads - 1);
 
-    for (boost::uint32_t i = 0; i != threads; ++i)
+    for (boost::uint32_t i = 0; i != threads - 1; ++i)
+    {
         workers.add_thread(new boost::thread(invoke_n_workers,
             boost::ref(b), boost::ref(elapsed[i]), tasks));
-
-    workers.join_all();
+    }
 
     double total_elapsed = 0;
 
+    invoke_n_workers_nowait(total_elapsed, tasks);
+
+    workers.join_all();
+
     for (boost::uint64_t i = 0; i < elapsed.size(); ++i)
+    {
+        //cout << i << " " << elapsed[i] << "\n"; 
         total_elapsed += elapsed[i];
+    }
 
     // Print out the results.
     print_results(vm, total_elapsed / double(threads)

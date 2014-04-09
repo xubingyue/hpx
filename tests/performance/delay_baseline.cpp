@@ -65,7 +65,7 @@ void print_results(
         cout <<
                 "## 0:DELAY:Delay [micro-seconds] - Independent Variable\n"
                 "## 1:TASKS:# of Tasks - Independent Variable\n"
-                "## 2:WTIME_THR:Total Walltime/Thread [seconds]\n"
+                "## 2:WTIME_THR:Total Walltime/Thread [micro-seconds]\n"
                 ;
     }
 
