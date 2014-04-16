@@ -190,7 +190,7 @@ private:
 
   std::size_t index_;
   typedef std::vector<basic_resolver_entry<InternetProtocol> > values_type;
-  boost::asio::detail::shared_ptr<values_type> values_;
+  boost::shared_ptr<values_type> values_;
 };
 
 } // namespace ip
