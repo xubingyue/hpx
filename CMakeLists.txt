@@ -582,7 +582,7 @@ else()
 endif()
 
 hpx_option(HPX_THREAD_MAINTAIN_QUEUE_WAITTIME BOOL
-  "Enable collecting queue wait times for threads (default: ON)" ON ADVANCED)
+  "Enable collecting queue wait times for threads (default: ON)" OFF ADVANCED)
 if(HPX_THREAD_MAINTAIN_QUEUE_WAITTIME)
   hpx_add_config_define(HPX_THREAD_MAINTAIN_QUEUE_WAITTIME 1)
 else()
@@ -1492,6 +1492,10 @@ else()
   ##############################################################################
   # System libraries
   ##############################################################################
+  if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
+    set(hpx_RUNTIME_LIBRARIES ${hpx_RUNTIME_LIBRARIES} irc)
+  endif()
+
   if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
     set(hpx_RUNTIME_LIBRARIES ${hpx_RUNTIME_LIBRARIES} dl)
   endif()
@@ -1508,7 +1512,6 @@ else()
     DEFINITIONS HPX_HAVE_PTHREAD_AFFINITY_NP)
 
   hpx_use_flag_if_available(-pthread LANGUAGES CXX C)
-
 endif()
 
 if(HPX_DISABLE_AUTOMATIC_SERIALIZATION_REGISTRATION)
