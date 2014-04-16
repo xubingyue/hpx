@@ -28,6 +28,18 @@
 #include <boost/mpl/if.hpp>
 #include <boost/utility/declval.hpp>
 
+///////////////////////////////////////////////////////////////////////////
+namespace hpx { namespace lcos { namespace local { namespace detail
+{
+    template <typename Policy>
+    struct is_launch_policy
+        : boost::mpl::or_<
+            boost::is_same<BOOST_SCOPED_ENUM(launch), Policy>
+          , boost::is_base_and_derived<threads::executor, Policy>
+        >
+    {};
+}}}}
+
 namespace hpx { namespace lcos { namespace detail
 {
     ///////////////////////////////////////////////////////////////////////////
@@ -510,7 +522,12 @@ namespace hpx { namespace lcos { namespace detail
         //   - valid() == false on original future object immediately after it
         //     returns.
         template <typename F>
-        typename future_then_result<Derived, F>::type
+        typename boost::lazy_disable_if<
+            hpx::lcos::local::detail::is_launch_policy<
+                typename util::decay<F>::type
+            >
+          , future_then_result<Derived, F>
+        >::type
         then(F && f)
         {
             return then(launch::all, std::forward<F>(f));
@@ -872,7 +889,12 @@ namespace hpx { namespace lcos
         using base_type::get_status;
 
         template <typename F>
-        typename detail::future_then_result<unique_future, F>::type
+        typename boost::lazy_disable_if<
+            hpx::lcos::local::detail::is_launch_policy<
+                typename util::decay<F>::type
+            >
+          , detail::future_then_result<unique_future, F>
+        >::type
         then(F && f)
         {
             invalidate on_exit(*this);
@@ -1064,17 +1086,6 @@ namespace hpx { namespace lcos
         using base_type::wait_until;
     };
 
-    ///////////////////////////////////////////////////////////////////////////
-    namespace local { namespace detail
-    {
-        template <typename Policy>
-        struct is_launch_policy
-          : boost::mpl::or_<
-                boost::is_same<BOOST_SCOPED_ENUM(launch), Policy>
-              , boost::is_base_and_derived<threads::executor, Policy>
-            >
-        {};
-    }}
 
 #if defined(HPX_ENABLE_DEPRECATED_FUTURE)
     ///////////////////////////////////////////////////////////////////////////
