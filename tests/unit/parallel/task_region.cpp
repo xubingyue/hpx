@@ -113,6 +113,113 @@ void task_region_test2()
     HPX_TEST(task3_flag);
 }
 
+///////////////////////////////////////////////////////////////////////////////
+void task_region_test3()
+{
+    std::string s("test");
+
+    bool parent_flag = false;
+    bool task1_flag = false;
+    bool task2_flag = false;
+    bool task21_flag = false;
+    bool task3_flag = false;
+
+    int result = task_region([&](task_region_handle& trh) -> int
+    {
+        parent_flag = true;
+
+        trh.run([=, &task1_flag]{
+            task1_flag = true;
+            hpx::cout << "task1: " << s << hpx::endl;
+        });
+
+        trh.run([&]{
+            task2_flag = true;
+            hpx::cout << "task2" << hpx::endl;
+
+            task_region([&](task_region_handle& trh)
+            {
+                trh.run([&]{
+                    task21_flag = true;
+                    hpx::cout << "task2.1" << hpx::endl;
+                });
+            });
+        });
+
+        int i = 0, j = 10, k = 20;
+        trh.run([=, &task3_flag]{
+            task3_flag = true;
+            hpx::cout << "task3: " << i << " " << j << " " << k << hpx::endl;
+        });
+
+        hpx::cout << "parent" << hpx::endl;
+
+        return 42;
+    });
+
+    HPX_TEST_EQ(result, 42);
+    HPX_TEST(parent_flag);
+    HPX_TEST(task1_flag);
+    HPX_TEST(task2_flag);
+    HPX_TEST(task21_flag);
+    HPX_TEST(task3_flag);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+void task_region_test4()
+{
+    std::string s("test");
+
+    bool parent_flag = false;
+    bool task1_flag = false;
+    bool task2_flag = false;
+    bool task21_flag = false;
+    bool task3_flag = false;
+
+    hpx::future<int> f = async_task_region([&](task_region_handle& trh) -> int
+    {
+        parent_flag = true;
+
+        trh.run([=, &task1_flag]{
+            task1_flag = true;
+            hpx::cout << "task1: " << s << hpx::endl;
+        });
+
+        trh.run([&]{
+            task2_flag = true;
+            hpx::cout << "task2" << hpx::endl;
+
+            task_region([&](task_region_handle& trh)
+            {
+                trh.run([&]{
+                    task21_flag = true;
+                    hpx::cout << "task2.1" << hpx::endl;
+                });
+            });
+        });
+
+        int i = 0, j = 10, k = 20;
+        trh.run([=, &task3_flag]{
+            task3_flag = true;
+            hpx::cout << "task3: " << i << " " << j << " " << k << hpx::endl;
+        });
+
+        hpx::cout << "parent" << hpx::endl;
+
+        return 42;
+    });
+
+    f.wait();
+
+    HPX_TEST_EQ(f.get(), 42);
+    HPX_TEST(parent_flag);
+    HPX_TEST(task1_flag);
+    HPX_TEST(task2_flag);
+    HPX_TEST(task21_flag);
+    HPX_TEST(task3_flag);
+}
+
+///////////////////////////////////////////////////////////////////////////////
 void task_region_exceptions_test1()
 {
     try {
@@ -233,6 +340,9 @@ int hpx_main()
 {
     task_region_test1();
     task_region_test2();
+
+    task_region_test3();
+    task_region_test4();
 
     task_region_exceptions_test1();
     task_region_exceptions_test2();
