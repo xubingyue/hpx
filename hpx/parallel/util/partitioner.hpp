@@ -15,7 +15,6 @@
 #include <hpx/parallel/execution_policy.hpp>
 #include <hpx/parallel/detail/algorithm_result.hpp>
 #include <hpx/util/decay.hpp>
-#include <hpx/include/iostreams.hpp>
 
 ///////////////////////////////////////////////////////////////////////////////
 namespace hpx { namespace parallel { namespace util
@@ -213,7 +212,7 @@ namespace hpx { namespace parallel { namespace util
             std::advance(first, test_chunk_size);
             count -= test_chunk_size;
 
-            // generate work again for the other cores, to decrease the chance
+            // generate work for the other cores again, to decrease the chance
             // that our benchmarking async will get scheduled to the end
             // of the queue
             for(int i = 0; i < cores && count >= test_chunk_size; i++)
@@ -239,7 +238,7 @@ namespace hpx { namespace parallel { namespace util
             // be measured
             if(t == 0) return 0;
 
-            // calculate desired chunksize frome measured time
+            // calculate desired chunksize from measured time
             size_t chunksize = (test_chunk_size * desired_chunktime_ns) / t;
 
             // round up, not down.
@@ -248,7 +247,7 @@ namespace hpx { namespace parallel { namespace util
             // also, it prevents rounding to a chunksize of zero.
             chunksize++;
 
-            // TODO: replace couts by perfcounters
+            // TODO: replace couts with perfcounters
 //            std::cout << std::endl;
 //            std::cout << "chunksize: " << chunksize << std::endl;
 //            std::cout << "time per item: " << (t / test_chunk_size) << std::endl;
