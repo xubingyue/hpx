@@ -110,37 +110,6 @@ namespace hpx { namespace parallel { namespace util
             f(first, count);
         }
 
-        template <typename R, typename F, typename FwdIter>
-        hpx::lcos::future<R> execute_minibench_work(R*,
-            F && f, FwdIter first, std::size_t count)
-        {
-            return hpx::make_ready_future(f(first, count));
-        }
-
-        template <typename F, typename FwdIter>
-        hpx::lcos::future<void> execute_minibench_work(void*,
-            F && f, FwdIter first, std::size_t count)
-        {
-            f(first, count);
-            return hpx::make_ready_future();
-        }
-
-        template <typename R, typename F, typename FwdIter>
-        hpx::lcos::future<R> run_minibench(F && f,
-            FwdIter first,
-            std::size_t count,
-            hpx::lcos::local::promise<boost::uint64_t> *t_promise)
-        {
-            // identifier needed to handle typename R == void special case
-            R* identifier = NULL;
-            boost::uint64_t t = hpx::util::high_resolution_clock::now();
-            hpx::lcos::future<R> res = execute_minibench_work(identifier,
-                                                              f, first, count);
-            t = (hpx::util::high_resolution_clock::now() - t);
-            t_promise->set_value(t);
-            return res;
-        }
-
         // estimate a chunk size based on number of cores used
         template <typename Result, typename F1, typename FwdIter>
         std::size_t auto_chunk_size(
@@ -158,18 +127,11 @@ namespace hpx { namespace parallel { namespace util
             // generate work for the other cores.
             // this reduces the sequential portion of the code
             // and prevents wrong timing results by work-stealing attempts
-            for(int i = 0; i < cores && count >= test_chunk_size; i++)
+            for(int i = 0; i < 2* (cores - 1) && count >= test_chunk_size; i++)
             {
-                if (exec)
-                {
-                    workitems.push_back(hpx::async(exec, f1, first,
-                                        test_chunk_size));
-                }
-                else
-                {
-                    workitems.push_back(hpx::async(hpx::launch::fork,
-                                        f1, first, test_chunk_size));
-                }
+                workitems.push_back(hpx::async(exec, f1, first,
+                                               test_chunk_size));
+
                 count -= test_chunk_size;
                 std::advance(first, test_chunk_size);
             }
@@ -186,53 +148,19 @@ namespace hpx { namespace parallel { namespace util
                 count -= startup_size;
             }
 
-            // the variable to hold the measured time
-            hpx::lcos::local::promise<boost::uint64_t> t_promise;
-            hpx::lcos::future<boost::uint64_t> t_future = t_promise.get_future();
 
-            // run benchmark
-            if (exec)
-            {
-                workitems.push_back(
-                    hpx::async(exec,
-                        hpx::util::bind(&(run_minibench<Result, F1, FwdIter>),
-                                        f1, first, test_chunk_size, &t_promise)
-                    )
-                );
-            }
-            else
-            {
-                workitems.push_back(
-                    hpx::async(hpx::launch::fork,
-                        hpx::util::bind(&(run_minibench<Result, F1, FwdIter>),
-                                        f1, first, test_chunk_size, &t_promise)
-                    )
-                );
-            }
+            // start timer
+            boost::uint64_t t = hpx::util::high_resolution_clock::now();
+
+            // run the benchmark iteration
+            add_ready_future(workitems, f1, first, test_chunk_size);
+
+            // stop timer
+            t = (hpx::util::high_resolution_clock::now() - t);
+
+            // mark benchmarked items as processed
             std::advance(first, test_chunk_size);
             count -= test_chunk_size;
-
-            // generate work for the other cores again, to decrease the chance
-            // that our benchmarking async will get scheduled to the end
-            // of the queue
-            for(int i = 0; i < cores && count >= test_chunk_size; i++)
-            {
-                if (exec)
-                {
-                    workitems.push_back(hpx::async(exec, f1, first,
-                                        test_chunk_size));
-                }
-                else
-                {
-                    workitems.push_back(hpx::async(hpx::launch::fork,
-                                        f1, first, test_chunk_size));
-                }
-                count -= test_chunk_size;
-                std::advance(first, test_chunk_size);
-            }
-
-            // wait for bench to finish
-            boost::uint64_t t = t_future.get();
 
             // don't calculate chunk size if time difference was too small to
             // be measured
@@ -268,8 +196,9 @@ namespace hpx { namespace parallel { namespace util
                 if (chunk_size == 0)
                 {
                     std::size_t const cores = hpx::get_os_thread_count(exec);
-                    chunk_size = auto_chunk_size(exec, workitems, f1,
-                                                 first, count);
+                    if(count >= 20*cores)
+                        chunk_size = auto_chunk_size(exec, workitems, f1,
+                                                     first, count);
 
                     if (chunk_size == 0)
                         chunk_size = (count + cores - 1) / cores;
