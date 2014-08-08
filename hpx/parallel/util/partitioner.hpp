@@ -150,7 +150,7 @@ namespace hpx { namespace parallel { namespace util
         {
             std::size_t startup_size = 1; // one startup iteration
             boost::uint64_t desired_chunktime_ns = 1500000; // 1.5 ms
-            std::size_t test_chunk_size = std::min(count / 1000, 1);
+            std::size_t test_chunk_size = std::max(count / 1000, (size_t)1);
 
             // get number of cores available
             std::size_t const cores = hpx::get_os_thread_count(exec);
