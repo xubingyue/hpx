@@ -111,15 +111,22 @@ namespace hpx { namespace parallel { namespace util
         }
 
         // estimate a chunk size based on number of cores used
-        template <typename Result, typename F1, typename FwdIter>
+        template <typename ExPolicy, typename Result, typename F1, typename FwdIter>
         std::size_t auto_chunk_size(
-            threads::executor& exec,
+            ExPolicy const& policy,
             std::vector<hpx::future<Result> >& workitems,
             F1 && f1, FwdIter& first, std::size_t& count)
         {
             std::size_t startup_size = 1; // one startup iteration
-            boost::uint64_t desired_chunktime_ns = 1500000; // 1.5 ms
             std::size_t test_chunk_size = std::max(count / 1000, (size_t)1);
+
+            // Read execution policy
+            threads::executor exec = policy.get_executor();
+            boost::uint64_t desired_chunktime_ns = policy.get_chunk_time();
+
+            // If no chunktime is supplied, fall back to 1.5 ms
+            if(desired_chunktime_ns == 0)
+                desired_chunktime_ns = 1500000;
 
             // get number of cores available
             std::size_t const cores = hpx::get_os_thread_count(exec);
@@ -197,7 +204,7 @@ namespace hpx { namespace parallel { namespace util
                 {
                     std::size_t const cores = hpx::get_os_thread_count(exec);
                     if(count >= 20*cores)
-                        chunk_size = auto_chunk_size(exec, workitems, f1,
+                        chunk_size = auto_chunk_size(policy, workitems, f1,
                                                      first, count);
 
                     if (chunk_size == 0)
