@@ -67,24 +67,81 @@ namespace hpx { namespace parallel { HPX_INLINE_NAMESPACE(v1)
             return parallel_execution_policy(chunk_size);
         }
 
+        /// Create a new parallel_execution_policy referencing an executor and
+        /// a chunk time.
+        ///
+        /// \param exec         [in] The executor to use for the execution of
+        ///                     the parallel algorithm the returned execution
+        ///                     policy is used with
+        /// \param chunk_time   [in] The chunk time controlling the number of
+        ///                     iterations scheduled to be executed on the same
+        ///                     HPX thread
+        ///
+        /// \returns The new parallel_execution_policy
+        ///
+        template<typename Rep, typename Period>
+        parallel_execution_policy operator()(threads::executor const& exec,
+            boost::chrono::duration<Rep, Period> chunk_time) const
+        {
+            // convert boost::chrono::duration to nanoseconds
+            boost::chrono::nanoseconds chunk_time_ns = 
+                boost::chrono::duration_cast<boost::chrono::nanoseconds>
+                    (chunk_time);
+
+            return parallel_execution_policy(exec, std::move(chunk_time_ns));
+        }
+
+        /// Create a new parallel_execution_policy referencing a chunk time.
+        ///
+        /// \param chunk_time   [in] The chunk time controlling the number of
+        ///                     iterations scheduled to be executed on the same
+        ///                     HPX thread
+        ///
+        /// \returns The new parallel_execution_policy
+        ///
+        template<typename Rep, typename Period>
+        parallel_execution_policy operator()(
+                boost::chrono::duration<Rep, Period> chunk_time) const
+        {
+            // convert boost::chrono::duration to nanoseconds
+            boost::chrono::nanoseconds chunk_time_ns = 
+                boost::chrono::duration_cast<boost::chrono::nanoseconds>
+                    (chunk_time);
+
+            return parallel_execution_policy(std::move(chunk_time_ns));
+        }
+
         /// \cond NOINTERNAL
         threads::executor get_executor() const { return exec_; }
         std::size_t get_chunk_size() const { return chunk_size_; }
+        boost::uint64_t get_chunk_time() const { return chunk_time_; }
         /// \endcond
 
     private:
         /// \cond NOINTERNAL
         parallel_execution_policy(threads::executor const& exec,
                 std::size_t chunk_size)
-          : exec_(exec), chunk_size_(chunk_size)
+          : exec_(exec), chunk_size_(chunk_size), chunk_time_(0)
         {}
 
         parallel_execution_policy(std::size_t chunk_size)
-          : exec_(), chunk_size_(chunk_size)
+          : exec_(), chunk_size_(chunk_size), chunk_time_(0)
+        {}
+
+        parallel_execution_policy(threads::executor const& exec,
+                boost::chrono::nanoseconds && chunk_time)
+          : exec_(exec), chunk_size_(0),
+            chunk_time_((boost::uint64_t)chunk_time.count())
+        {}
+
+        parallel_execution_policy(boost::chrono::nanoseconds && chunk_time)
+          : exec_(), chunk_size_(0),
+            chunk_time_((boost::uint64_t)chunk_time.count())
         {}
 
         threads::executor exec_;
         std::size_t chunk_size_;
+        boost::uint64_t chunk_time_;
         // \endcond
     };
 
@@ -164,24 +221,81 @@ namespace hpx { namespace parallel { HPX_INLINE_NAMESPACE(v1)
             return task_execution_policy(chunk_size);
         }
 
+        /// Create a new task_execution_policy referencing an executor and
+        /// a chunk time.
+        ///
+        /// \param exec         [in] The executor to use for the execution of
+        ///                     the parallel algorithm the returned execution
+        ///                     policy is used with
+        /// \param chunk_time   [in] The chunk time controlling the number of
+        ///                     iterations scheduled to be executed on the same
+        ///                     HPX thread
+        ///
+        /// \returns The new task_execution_policy
+        ///
+        template<typename Rep, typename Period>
+        task_execution_policy operator()(threads::executor const& exec,
+            boost::chrono::duration<Rep, Period> chunk_time) const
+        {
+            // convert boost::chrono::duration to nanoseconds
+            boost::chrono::nanoseconds chunk_time_ns = 
+                boost::chrono::duration_cast<boost::chrono::nanoseconds>
+                    (chunk_time);
+
+            return task_execution_policy(exec, std::move(chunk_time_ns));
+        }
+
+        /// Create a new task_execution_policy referencing a chunk time.
+        ///
+        /// \param chunk_time   [in] The chunk time controlling the number of
+        ///                     iterations scheduled to be executed on the same
+        ///                     HPX thread
+        ///
+        /// \returns The new task_execution_policy
+        ///
+        template<typename Rep, typename Period>
+        task_execution_policy operator()(
+                boost::chrono::duration<Rep, Period> chunk_time) const
+        {
+            // convert boost::chrono::duration to nanoseconds
+            boost::chrono::nanoseconds chunk_time_ns = 
+                boost::chrono::duration_cast<boost::chrono::nanoseconds>
+                    (chunk_time);
+
+            return task_execution_policy(std::move(chunk_time_ns));
+        }
+
         /// \cond NOINTERNAL
         threads::executor get_executor() const { return exec_; }
         std::size_t get_chunk_size() const { return chunk_size_; }
+        boost::uint64_t get_chunk_time() const { return chunk_time_; }
         /// \endcond
 
     private:
         /// \cond NOINTERNAL
         task_execution_policy(threads::executor const& exec,
                 std::size_t chunk_size)
-          : exec_(exec), chunk_size_(chunk_size)
+          : exec_(exec), chunk_size_(chunk_size), chunk_time_(0)
         {}
 
         task_execution_policy(std::size_t chunk_size)
-          : exec_(), chunk_size_(chunk_size)
+          : exec_(), chunk_size_(chunk_size), chunk_time_(0)
+        {}
+
+        task_execution_policy(threads::executor const& exec,
+                boost::chrono::nanoseconds && chunk_time)
+          : exec_(exec), chunk_size_(0),
+            chunk_time_((boost::uint64_t)chunk_time.count())
+        {}
+
+        task_execution_policy(boost::chrono::nanoseconds && chunk_time)
+          : exec_(), chunk_size_(0),
+            chunk_time_((boost::uint64_t)chunk_time.count())
         {}
 
         threads::executor exec_;
         std::size_t chunk_size_;
+        boost::uint64_t chunk_time_;
         /// \endcond
     };
 
