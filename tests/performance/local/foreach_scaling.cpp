@@ -20,8 +20,27 @@ int delay = 1000;
 int test_count = 100;
 int chunk_size = 0;
 int num_overlapping_loops = 0;
+boost::chrono::nanoseconds chunk_time;
 
 ///////////////////////////////////////////////////////////////////////////////
+
+template<typename T>
+T median(std::vector<T> vals)
+{
+    size_t size = vals.size();
+
+    std::sort(vals.begin(), vals.end());
+
+    if(size % 2 == 0)
+    {
+        return (vals[size/2 - 1] + vals[size/2]) / 2;
+    }
+    else
+    {
+        return vals[(size-1)/2];
+    }
+}
+
 void measure_sequential_foreach(std::size_t size)
 {
     std::vector<std::size_t> data_representation(size);
@@ -46,12 +65,24 @@ void measure_parallel_foreach(std::size_t size)
         std::rand());
 
     // invoke parallel for_each
-    hpx::parallel::for_each(hpx::parallel::par(chunk_size),
-        boost::begin(data_representation),
-        boost::end(data_representation),
-        [](std::size_t) {
-            worker_timed(delay);
-        });
+    if(chunk_time.count() != 0)
+    {
+        hpx::parallel::for_each(hpx::parallel::par(chunk_time),
+            boost::begin(data_representation),
+            boost::end(data_representation),
+            [](std::size_t) {
+                worker_timed(delay);
+            });
+    }
+    else
+    {
+        hpx::parallel::for_each(hpx::parallel::par(chunk_size),
+            boost::begin(data_representation),
+            boost::end(data_representation),
+            [](std::size_t) {
+                worker_timed(delay);
+            });
+    }
 }
 
 hpx::future<void> measure_task_foreach(std::size_t size)
@@ -61,69 +92,101 @@ hpx::future<void> measure_task_foreach(std::size_t size)
     std::iota(boost::begin(*data_representation),
         boost::end(*data_representation),
         std::rand());
-
+    
     // invoke parallel for_each
-    return
-        hpx::parallel::for_each(hpx::parallel::task(chunk_size),
-            boost::begin(*data_representation),
-            boost::end(*data_representation),
-            [](std::size_t) {
-                worker_timed(delay);
-            }
-        ).then(
-            [data_representation](hpx::future<void>) {}
-        );
+    if(chunk_time.count() != 0)
+    {
+        return
+            hpx::parallel::for_each(hpx::parallel::task(chunk_time),
+                boost::begin(*data_representation),
+                boost::end(*data_representation),
+                [](std::size_t) {
+                    worker_timed(delay);
+                }
+            ).then(
+                [data_representation](hpx::future<void>) {}
+            );
+    }
+    else
+    {
+        return
+            hpx::parallel::for_each(hpx::parallel::task(chunk_size),
+                boost::begin(*data_representation),
+                boost::end(*data_representation),
+                [](std::size_t) {
+                    worker_timed(delay);
+                }
+            ).then(
+                [data_representation](hpx::future<void>) {}
+            );
+    }
 }
 
 boost::uint64_t average_out_parallel(std::size_t vector_size)
 {
-    boost::uint64_t start = hpx::util::high_resolution_clock::now();
+    std::vector<uint64_t> results;
 
     // average out 100 executions to avoid varying results
-    for(auto i = 0; i < test_count; i++)
+    for(auto i = 0; i < test_count; i++){
+        boost::uint64_t t = hpx::util::high_resolution_clock::now();
         measure_parallel_foreach(vector_size);
+        t = (hpx::util::high_resolution_clock::now() - t);
+        results.push_back(t);
+    }
 
-    return (hpx::util::high_resolution_clock::now() - start) / test_count;
+    return median(results);
 }
 
 boost::uint64_t average_out_task(std::size_t vector_size)
 {
     if (num_overlapping_loops <= 0)
     {
-        boost::uint64_t start = hpx::util::high_resolution_clock::now();
-
-        for(auto i = 0; i < test_count; i++)
+        std::vector<uint64_t> results;
+    
+        // average out 100 executions to avoid varying results
+        for(auto i = 0; i < test_count; i++){
+            boost::uint64_t t = hpx::util::high_resolution_clock::now();
             measure_task_foreach(vector_size).wait();
-
-        return (hpx::util::high_resolution_clock::now() - start) / test_count;
+            t = (hpx::util::high_resolution_clock::now() - t);
+            results.push_back(t);
+        }
+    
+        return median(results);
     }
 
     std::vector<hpx::future<void> > tests;
     tests.resize(num_overlapping_loops);
 
-    boost::uint64_t start = hpx::util::high_resolution_clock::now();
-
-    for(auto i = 0; i < test_count; i++)
+    std::vector<uint64_t> results;
+    for(auto i = 0; i < test_count/num_overlapping_loops; i++)
     {
-        hpx::future<void> curr = measure_task_foreach(vector_size);
-        if (i >= num_overlapping_loops)
-            tests[(i-num_overlapping_loops) % tests.size()].wait();
-        tests[i % tests.size()] = std::move(curr);
+
+        boost::uint64_t t = hpx::util::high_resolution_clock::now();
+        for(auto j = 0; j < num_overlapping_loops; j++)
+        {
+            tests[j] = measure_task_foreach(vector_size);
+        }
+        hpx::wait_all(tests);
+        t = (hpx::util::high_resolution_clock::now() - t);
+        results.push_back(t);
     }
 
-    hpx::wait_all(tests);
-    return (hpx::util::high_resolution_clock::now() - start) / test_count;
+    return median(results) / 4;
 }
 
 boost::uint64_t average_out_sequential(std::size_t vector_size)
 {
-    boost::uint64_t start = hpx::util::high_resolution_clock::now();
+    std::vector<uint64_t> results;
 
     // average out 100 executions to avoid varying results
-    for(auto i = 0; i < test_count; i++)
+    for(auto i = 0; i < test_count; i++){
+        boost::uint64_t t = hpx::util::high_resolution_clock::now();
         measure_sequential_foreach(vector_size);
+        t = (hpx::util::high_resolution_clock::now() - t);
+        results.push_back(t);
+    }
 
-    return (hpx::util::high_resolution_clock::now() - start) / test_count;
+    return median(results);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -135,6 +198,7 @@ int hpx_main(boost::program_options::variables_map& vm)
     delay = vm["work_delay"].as<int>();
     test_count = vm["test_count"].as<int>();
     chunk_size = vm["chunk_size"].as<int>();
+    chunk_time = boost::chrono::nanoseconds(vm["chunk_time"].as<unsigned long>());
     num_overlapping_loops = vm["overlapping_loops"].as<int>();
 
     //verify that input is within domain of program
@@ -211,6 +275,10 @@ int main(int argc, char* argv[])
         ("chunk_size"
         , boost::program_options::value<int>()->default_value(0)
         , "number of iterations to combine while parallelization")
+
+        ("chunk_time"
+        , boost::program_options::value<unsigned long>()->default_value(0)
+        , "target execution time of each chunk in nanoseconds")
 
         ("overlapping_loops"
         , boost::program_options::value<int>()->default_value(0)
