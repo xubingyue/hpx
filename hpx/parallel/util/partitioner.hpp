@@ -16,6 +16,9 @@
 #include <hpx/parallel/detail/algorithm_result.hpp>
 #include <hpx/util/decay.hpp>
 
+#include <boost/multiprecision/cpp_int.hpp>
+using boost::multiprecision::uint128_t;
+
 ///////////////////////////////////////////////////////////////////////////////
 namespace hpx { namespace parallel { namespace util
 {
@@ -178,8 +181,7 @@ namespace hpx { namespace parallel { namespace util
             // calculate desired chunksize from measured time
             HPX_ASSERT(desired_chunktime_ns.count() >= 0);
             std::size_t chunksize = static_cast<std::size_t>(
-                    (test_chunk_size * (uint128_t)desired_chunktime_ns.count())
-                                                                           / t);
+                (test_chunk_size * (uint128_t)desired_chunktime_ns.count()) / t);
 
             // round up, not down.
             // this ensures that chunksize is rather too big than too small.
