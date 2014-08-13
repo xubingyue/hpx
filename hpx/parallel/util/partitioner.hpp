@@ -118,7 +118,7 @@ namespace hpx { namespace parallel { namespace util
             F1 && f1, FwdIter& first, std::size_t& count)
         {
             std::size_t startup_size = 1; // one startup iteration
-            std::size_t test_chunk_size = std::max(count / 1000, (size_t)1);
+            std::size_t test_chunk_size = std::max(count / 1000, (std::size_t)1);
             
             // get executor
             threads::executor exec = policy.get_executor();
@@ -177,8 +177,9 @@ namespace hpx { namespace parallel { namespace util
 
             // calculate desired chunksize from measured time
             HPX_ASSERT(desired_chunktime_ns.count() >= 0);
-            size_t chunksize = static_cast<size_t>(
-                          (test_chunk_size * desired_chunktime_ns.count()) / t);
+            std::size_t chunksize = static_cast<std::size_t>(
+                    (test_chunk_size * (uint128_t)desired_chunktime_ns.count())
+                                                                           / t);
 
             // round up, not down.
             // this ensures that chunksize is rather too big than too small.
