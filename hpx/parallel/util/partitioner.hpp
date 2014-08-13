@@ -127,11 +127,11 @@ namespace hpx { namespace parallel { namespace util
             std::size_t const cores = hpx::get_os_thread_count(exec);
 
             // get target chunktime
-            boost::uint64_t desired_chunktime_ns = policy.get_chunk_time();
+            boost::chrono::nanoseconds desired_chunktime_ns = policy.get_chunk_time();
 
             // If no chunktime is supplied, fall back to 64us * cores
-            if(desired_chunktime_ns == 0)
-                desired_chunktime_ns = 64000 * cores;
+            if(desired_chunktime_ns.count() == 0)
+                desired_chunktime_ns = boost::chrono::nanoseconds(64000 * cores);
 
             // generate work for the other cores.
             // this reduces the sequential portion of the code
@@ -176,7 +176,9 @@ namespace hpx { namespace parallel { namespace util
             if(t == 0) return 0;
 
             // calculate desired chunksize from measured time
-            size_t chunksize = (test_chunk_size * desired_chunktime_ns) / t;
+            HPX_ASSERT(desired_chunktime_ns.count() >= 0);
+            size_t chunksize = static_cast<size_t>(
+                          (test_chunk_size * desired_chunktime_ns.count()) / t);
 
             // round up, not down.
             // this ensures that chunksize is rather too big than too small.

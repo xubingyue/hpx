@@ -114,7 +114,7 @@ namespace hpx { namespace parallel { HPX_INLINE_NAMESPACE(v1)
         /// \cond NOINTERNAL
         threads::executor get_executor() const { return exec_; }
         std::size_t get_chunk_size() const { return chunk_size_; }
-        boost::uint64_t get_chunk_time() const { return chunk_time_; }
+        boost::chrono::nanoseconds get_chunk_time() const { return chunk_time_; }
         /// \endcond
 
     private:
@@ -131,17 +131,17 @@ namespace hpx { namespace parallel { HPX_INLINE_NAMESPACE(v1)
         parallel_execution_policy(threads::executor const& exec,
                 boost::chrono::nanoseconds && chunk_time)
           : exec_(exec), chunk_size_(0),
-            chunk_time_((boost::uint64_t)chunk_time.count())
+            chunk_time_(std::move(chunk_time))
         {}
 
         parallel_execution_policy(boost::chrono::nanoseconds && chunk_time)
           : exec_(), chunk_size_(0),
-            chunk_time_((boost::uint64_t)chunk_time.count())
+            chunk_time_(std::move(chunk_time))
         {}
 
         threads::executor exec_;
         std::size_t chunk_size_;
-        boost::uint64_t chunk_time_;
+        boost::chrono::nanoseconds chunk_time_;
         // \endcond
     };
 
@@ -268,7 +268,7 @@ namespace hpx { namespace parallel { HPX_INLINE_NAMESPACE(v1)
         /// \cond NOINTERNAL
         threads::executor get_executor() const { return exec_; }
         std::size_t get_chunk_size() const { return chunk_size_; }
-        boost::uint64_t get_chunk_time() const { return chunk_time_; }
+        boost::chrono::nanoseconds get_chunk_time() const { return chunk_time_; }
         /// \endcond
 
     private:
@@ -285,17 +285,17 @@ namespace hpx { namespace parallel { HPX_INLINE_NAMESPACE(v1)
         task_execution_policy(threads::executor const& exec,
                 boost::chrono::nanoseconds && chunk_time)
           : exec_(exec), chunk_size_(0),
-            chunk_time_((boost::uint64_t)chunk_time.count())
+            chunk_time_(std::move(chunk_time))
         {}
 
         task_execution_policy(boost::chrono::nanoseconds && chunk_time)
           : exec_(), chunk_size_(0),
-            chunk_time_((boost::uint64_t)chunk_time.count())
+            chunk_time_(std::move(chunk_time))
         {}
 
         threads::executor exec_;
         std::size_t chunk_size_;
-        boost::uint64_t chunk_time_;
+        boost::chrono::nanoseconds chunk_time_;
         /// \endcond
     };
 
