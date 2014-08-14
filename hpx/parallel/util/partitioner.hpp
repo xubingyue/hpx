@@ -227,49 +227,198 @@ namespace hpx { namespace parallel { namespace util
         template <typename ExPolicy, typename Result = void>
         struct foreach_n_static_partitioner
         {
+        private:
+            struct call_parallel
+            {
+                template <typename FwdIter, typename F1>
+                void operator()(ExPolicy const& policy, FwdIter first,
+                    F1 && f1, hpx::util::tuple<std::size_t, // count
+                                               std::size_t, // chunk_size
+                                               std::size_t, // offset
+                                               std::vector<hpx::future<Result> >& // workitems
+                                              > args)
+                {
+    
+                    threads::executor exec = policy.get_executor();
+    
+                    std::size_t count       = hpx::util::get<0>(args);
+                    std::size_t chunk_size  = hpx::util::get<1>(args);
+                    std::size_t offset      = hpx::util::get<2>(args);
+                    std::vector<hpx::future<Result> >& workitems =
+                                                            hpx::util::get<3>(args);
+                    
+                    while(count > chunk_size)
+                    {
+                        if(exec)
+                        {
+                            workitems[offset] = hpx::async(exec, f1, first, chunk_size);
+                        }
+                        else
+                        {
+                            workitems[offset] = hpx::async(hpx::launch::fork,
+                                                            f1, first, chunk_size);
+                        }
+                        count -= chunk_size;
+                        std::advance(first, chunk_size);
+                        offset++;
+                    }
+    
+                    // execute last chunk directly
+                    if(count != 0)
+                    {
+                         workitems[offset] = hpx::async(hpx::launch::sync,
+                                                         f1, first, count);
+                         std::advance(first, count);
+                    }
+                }
+            };
+
+        public:
             template <typename FwdIter, typename F1>
             static FwdIter call(ExPolicy const& policy, FwdIter first,
                 std::size_t count, F1 && f1, std::size_t chunk_size)
             {
                 std::vector<hpx::future<Result> > workitems;
+                std::vector<hpx::future<void> > workers;
                 std::list<boost::exception_ptr> errors;
 
                 try {
+
                     // estimate a chunk size based on number of cores used
                     chunk_size = get_static_chunk_size(policy, workitems, f1,
                         first, count, chunk_size);
 
-                    // schedule every chunk on a separate thread
-                    workitems.reserve(count / chunk_size + 1);
-
+                    // get the executor
                     threads::executor exec = policy.get_executor();
-                    while (count > chunk_size)
+
+                    // get the number of cores
+                    std::size_t const cores = hpx::get_os_thread_count(exec);
+
+                    // try to split the work by the number of cores
+                    std::size_t workitems_per_core = count / cores;
+
+                    // get number of leftover packets
+                    std::size_t num_leftover_workitems = count % cores;
+
+                    // get number of chunks for cores with less work
+                    std::size_t num_chunks_small = workitems_per_core
+                                                                   / chunk_size;
+
+                    // add one (smaller) chunk if it can't be evenly divided
+                    if(workitems_per_core % chunk_size)
+                        num_chunks_small++;
+
+                    // get number of chunks for cores with more work
+                    std::size_t num_chunks_large = (workitems_per_core + 1) 
+                                                                   / chunk_size;
+                    
+                    // add one (smaller) chunk if it can't be evenly divided
+                    if((workitems_per_core + 1) % chunk_size)
+                        num_chunks_large++;
+                   
+                    // calculate total number of chunks
+                    std::size_t num_chunks_total =
+                        num_leftover_workitems * num_chunks_large + 
+                        (count - num_leftover_workitems) * num_chunks_small;
+
+                    // resize the array to hold the workitems
+                    workitems.resize(num_chunks_total);
+
+                    // create an array to hold the subthreads
+                    workers.reserve(cores);
+
+                    // start all workers
+                    std::size_t workitems_of_worker;
+                    std::size_t offset = 0;
+                    for(std::size_t i = 0; i < cores - 1; i++)
                     {
-                        if (exec)
+                        // if we have x leftover workitems, the workers 0 to x-1
+                        // have to process one extra workitem
+                        if(i < num_leftover_workitems)
                         {
-                            workitems.push_back(hpx::async(exec, f1, first,
-                                chunk_size));
+                            workitems_of_worker = workitems_per_core + 1;
                         }
                         else
                         {
-                            workitems.push_back(hpx::async(hpx::launch::fork,
-                                f1, first, chunk_size));
+                            workitems_of_worker = workitems_per_core;
                         }
-                        count -= chunk_size;
-                        std::advance(first, chunk_size);
-                    }
 
-                    // execute last chunk directly
-                    if (count != 0)
-                    {
-                        f1(first, count);
-                        std::advance(first, count);
+                        if(exec)
+                        {
+                            workers.push_back(hpx::async(exec, 
+                                 call_parallel(),
+                                 boost::ref(policy), first, f1,
+                                 hpx::util::make_tuple(
+                                    workitems_of_worker,
+                                    chunk_size,
+                                    offset,
+                                    boost::ref(workitems)
+                                 )));
+                        }
+                        else
+                        {
+                            workers.push_back(hpx::async(hpx::launch::fork, 
+                                 call_parallel(),
+                                 boost::ref(policy), first, f1,
+                                 hpx::util::make_tuple(
+                                    workitems_of_worker,
+                                    chunk_size,
+                                    offset,
+                                    boost::ref(workitems)
+                                 )));
+                        }
+                        
+                        // move to work of next worker
+                        std::advance(first, workitems_of_worker);
+                        count -= workitems_of_worker;
+
+                        // move forward in result array. again, workers that
+                        // have the extra workitem could have a different amount
+                        // of chunks
+                        if(i < num_leftover_workitems)
+                        {
+                            offset += num_chunks_large;
+                        }
+                        else
+                        {
+                            offset += num_chunks_small;
+                        }
+
                     }
+                    
+                    // execute the last one on current thread
+                    
+                    // no need to check for extra work item, the last one 
+                    // cannot have an extra one. (otherwise there would just
+                    // simply be one more for everyone, and 0 extra workitems)
+                    workitems_of_worker = workitems_per_core;
+
+                    workers.push_back(hpx::async(hpx::launch::sync,
+                        call_parallel(),
+                        boost::ref(policy), first, f1,
+                        hpx::util::make_tuple(
+                           workitems_of_worker,
+                           chunk_size,
+                           offset,
+                           boost::ref(workitems)
+                        )));
+                    
+                    std::advance(first, workitems_of_worker);
+                    count -= workitems_of_worker;
+
+                    // make sure that we processed all the items
+                    HPX_ASSERT(count == 0);
+
                 }
                 catch (...) {
                     detail::handle_local_exceptions<ExPolicy>::call(
                         boost::current_exception(), errors);
                 }
+
+                // wait for all workers to finish
+                hpx::wait_all(workers);
+                detail::handle_local_exceptions<ExPolicy>::call(
+                    workers, errors);
 
                 // wait for all tasks to finish
                 hpx::wait_all(workitems);
