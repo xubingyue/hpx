@@ -246,7 +246,7 @@ namespace hpx { namespace parallel { namespace util
                     std::size_t offset      = hpx::util::get<2>(args);
                     std::vector<hpx::future<Result> >& workitems =
                                                             hpx::util::get<3>(args);
-                    
+
                     while(count > chunk_size)
                     {
                         if(exec)
@@ -319,7 +319,7 @@ namespace hpx { namespace parallel { namespace util
                     // calculate total number of chunks
                     std::size_t num_chunks_total =
                         num_leftover_workitems * num_chunks_large + 
-                        (count - num_leftover_workitems) * num_chunks_small;
+                        (cores - num_leftover_workitems) * num_chunks_small;
 
                     // resize the array to hold the workitems
                     workitems.resize(num_chunks_total);
