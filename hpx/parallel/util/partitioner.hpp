@@ -121,15 +121,15 @@ namespace hpx { namespace parallel { namespace util
             F1 && f1, FwdIter& first, std::size_t& count)
         {
             std::size_t startup_size = 1; // one startup iteration
-            std::size_t test_chunk_size = std::max(count / 1000, (std::size_t)1);
-            
+            std::size_t test_chunk_size = (std::max)(count / 1000, (std::size_t)1);
+
             // get executor
             threads::executor exec = policy.get_executor();
 
             // get number of cores available
             std::size_t const cores = hpx::get_os_thread_count(exec);
 
-            // get target chunktime
+            // get target chunk time
             boost::chrono::nanoseconds desired_chunktime_ns = policy.get_chunk_time();
 
             // If no chunktime is supplied, fall back to 64us * cores
@@ -149,7 +149,7 @@ namespace hpx { namespace parallel { namespace util
             }
 
             // make sure we have enough work left to actually run the benchmark
-            if( count < test_chunk_size + startup_size ) return 0;
+            if(count < test_chunk_size + startup_size) return 0;
 
             // add startup iteration(s), as in some cases the first iteration(s)
             // are slower. (cache effects and stuff)
@@ -159,7 +159,6 @@ namespace hpx { namespace parallel { namespace util
                 std::advance(first, startup_size);
                 count -= startup_size;
             }
-
 
             // start timer
             boost::uint64_t t = hpx::util::high_resolution_clock::now();
@@ -193,7 +192,7 @@ namespace hpx { namespace parallel { namespace util
 //            std::cout << std::endl;
 //            std::cout << "chunksize: " << chunksize << std::endl;
 //            std::cout << "time per item: " << (t / test_chunk_size) << std::endl;
-            return std::min(count, chunksize); 
+            return (std::min)(count, chunksize);
         }
 
         template <typename ExPolicy, typename Result, typename F1,
@@ -228,19 +227,21 @@ namespace hpx { namespace parallel { namespace util
         struct foreach_n_static_partitioner
         {
         private:
+            typedef hpx::util::tuple<
+                std::size_t, // count
+                std::size_t, // chunk_size
+                std::size_t, // offset
+                std::vector<hpx::future<Result> >& // workitems
+            > arguments_type;
+
             struct call_parallel
             {
                 template <typename FwdIter, typename F1>
                 void operator()(ExPolicy const& policy, FwdIter first,
-                    F1 && f1, hpx::util::tuple<std::size_t, // count
-                                               std::size_t, // chunk_size
-                                               std::size_t, // offset
-                                               std::vector<hpx::future<Result> >& // workitems
-                                              > args)
+                    F1 && f1, arguments_type args) const
                 {
-    
                     threads::executor exec = policy.get_executor();
-    
+
                     std::size_t count       = hpx::util::get<0>(args);
                     std::size_t chunk_size  = hpx::util::get<1>(args);
                     std::size_t offset      = hpx::util::get<2>(args);
@@ -262,7 +263,7 @@ namespace hpx { namespace parallel { namespace util
                         std::advance(first, chunk_size);
                         offset++;
                     }
-    
+
                     // execute last chunk directly
                     if(count != 0)
                     {
@@ -333,7 +334,6 @@ namespace hpx { namespace parallel { namespace util
                 std::list<boost::exception_ptr> errors;
 
                 try {
-
                     // estimate a chunk size based on number of cores used
                     chunk_size = get_static_chunk_size(policy, workitems, f1,
                         first, count, chunk_size);
@@ -350,16 +350,16 @@ namespace hpx { namespace parallel { namespace util
                     // resize the array to hold the workitems
                     workitems.resize(work_dist.num_chunks_total);
 
-                    // create an array to hold the subthreads
+                    // create an array to hold the sub-threads
                     workers.reserve(cores);
 
                     // start all workers
-                    std::size_t workitems_of_worker;
+                    std::size_t workitems_of_worker = 0;
                     std::size_t offset = 0;
                     for(std::size_t i = 0; i < cores - 1; i++)
                     {
                         // if we have x leftover workitems, the workers 0 to x-1
-                        // have to process one extra workitem
+                        // have to process one extra work item
                         if(i < work_dist.num_large_workers)
                         {
                             workitems_of_worker = work_dist.workitems_per_core_large;
@@ -371,7 +371,7 @@ namespace hpx { namespace parallel { namespace util
 
                         if(exec)
                         {
-                            workers.push_back(hpx::async(exec, 
+                            workers.push_back(hpx::async(exec,
                                  call_parallel(),
                                  boost::ref(policy), first, f1,
                                  hpx::util::make_tuple(
@@ -383,7 +383,7 @@ namespace hpx { namespace parallel { namespace util
                         }
                         else
                         {
-                            workers.push_back(hpx::async(hpx::launch::fork, 
+                            workers.push_back(hpx::async(hpx::launch::fork,
                                  call_parallel(),
                                  boost::ref(policy), first, f1,
                                  hpx::util::make_tuple(
@@ -393,14 +393,14 @@ namespace hpx { namespace parallel { namespace util
                                     boost::ref(workitems)
                                  )));
                         }
-                        
+
                         // move to work of next worker
                         std::advance(first, workitems_of_worker);
                         count -= workitems_of_worker;
 
                         // move forward in result array. again, workers that
-                        // have the extra workitem could have a different amount
-                        // of chunks
+                        // have the extra work item could have a different
+                        // amount of chunks
                         if(i < work_dist.num_large_workers)
                         {
                             offset += work_dist.chunks_per_core_large;
@@ -409,9 +409,8 @@ namespace hpx { namespace parallel { namespace util
                         {
                             offset += work_dist.chunks_per_core_small;
                         }
-
                     }
-                    
+
                     // execute the last one on current thread
                     
                     // the last worker is always a small one.
@@ -428,13 +427,12 @@ namespace hpx { namespace parallel { namespace util
                            offset,
                            boost::ref(workitems)
                         )));
-                    
+
                     std::advance(first, workitems_of_worker);
                     count -= workitems_of_worker;
 
                     // make sure that we processed all the items
                     HPX_ASSERT(count == 0);
-
                 }
                 catch (...) {
                     detail::handle_local_exceptions<ExPolicy>::call(
