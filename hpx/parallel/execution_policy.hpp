@@ -84,7 +84,7 @@ namespace hpx { namespace parallel { HPX_INLINE_NAMESPACE(v1)
             boost::chrono::duration<Rep, Period> chunk_time) const
         {
             // convert boost::chrono::duration to nanoseconds
-            boost::chrono::nanoseconds chunk_time_ns = 
+            boost::chrono::nanoseconds chunk_time_ns =
                 boost::chrono::duration_cast<boost::chrono::nanoseconds>
                     (chunk_time);
 
@@ -104,7 +104,7 @@ namespace hpx { namespace parallel { HPX_INLINE_NAMESPACE(v1)
                 boost::chrono::duration<Rep, Period> chunk_time) const
         {
             // convert boost::chrono::duration to nanoseconds
-            boost::chrono::nanoseconds chunk_time_ns = 
+            boost::chrono::nanoseconds chunk_time_ns =
                 boost::chrono::duration_cast<boost::chrono::nanoseconds>
                     (chunk_time);
 
@@ -171,6 +171,8 @@ namespace hpx { namespace parallel { HPX_INLINE_NAMESPACE(v1)
 
         static threads::executor get_executor() { return threads::executor(); }
         static std::size_t get_chunk_size() { return 0; }
+        static boost::chrono::nanoseconds get_chunk_time() {
+            return boost::chrono::nanoseconds(0); }
         /// \endcond
     };
 
@@ -238,7 +240,7 @@ namespace hpx { namespace parallel { HPX_INLINE_NAMESPACE(v1)
             boost::chrono::duration<Rep, Period> chunk_time) const
         {
             // convert boost::chrono::duration to nanoseconds
-            boost::chrono::nanoseconds chunk_time_ns = 
+            boost::chrono::nanoseconds chunk_time_ns =
                 boost::chrono::duration_cast<boost::chrono::nanoseconds>
                     (chunk_time);
 
@@ -258,7 +260,7 @@ namespace hpx { namespace parallel { HPX_INLINE_NAMESPACE(v1)
                 boost::chrono::duration<Rep, Period> chunk_time) const
         {
             // convert boost::chrono::duration to nanoseconds
-            boost::chrono::nanoseconds chunk_time_ns = 
+            boost::chrono::nanoseconds chunk_time_ns =
                 boost::chrono::duration_cast<boost::chrono::nanoseconds>
                     (chunk_time);
 
