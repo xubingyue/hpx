@@ -220,7 +220,7 @@ namespace hpx { namespace parallel { namespace util
         ///////////////////////////////////////////////////////////////////////
         // The static partitioner simply spawns one chunk of iterations for
         // each available core.
-        static struct work_distribution{
+        struct work_distribution{
             public:
                 work_distribution(std::size_t count,
                                   std::size_t cores,
