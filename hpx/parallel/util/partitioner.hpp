@@ -294,35 +294,11 @@ namespace hpx { namespace parallel { namespace util
                     // get the number of cores
                     std::size_t const cores = hpx::get_os_thread_count(exec);
 
-                    // try to split the work by the number of cores
-                    std::size_t workitems_per_core = count / cores;
-
-                    // get number of leftover packets
-                    std::size_t num_leftover_workitems = count % cores;
-
-                    // get number of chunks for cores with less work
-                    std::size_t num_chunks_small = workitems_per_core
-                                                                   / chunk_size;
-
-                    // add one (smaller) chunk if it can't be evenly divided
-                    if(workitems_per_core % chunk_size)
-                        num_chunks_small++;
-
-                    // get number of chunks for cores with more work
-                    std::size_t num_chunks_large = (workitems_per_core + 1)
-                                                                   / chunk_size;
-
-                    // add one (smaller) chunk if it can't be evenly divided
-                    if((workitems_per_core + 1) % chunk_size)
-                        num_chunks_large++;
-
-                    // calculate total number of chunks
-                    std::size_t num_chunks_total =
-                        num_leftover_workitems * num_chunks_large +
-                        (cores - num_leftover_workitems) * num_chunks_small;
+                    // calculate the work distribution
+                    work_distribution work_dist(count, cores, chunk_size);
 
                     // resize the array to hold the workitems
-                    workitems.resize(num_chunks_total);
+                    workitems.resize(work_dist.num_chunks_total);
 
                     // create an array to hold the sub-threads
                     workers.reserve(cores);
@@ -334,13 +310,13 @@ namespace hpx { namespace parallel { namespace util
                     {
                         // if we have x leftover workitems, the workers 0 to x-1
                         // have to process one extra work item
-                        if(i < num_leftover_workitems)
+                        if(i < work_dist.num_large_workers)
                         {
-                            workitems_of_worker = workitems_per_core + 1;
+                            workitems_of_worker = work_dist.workitems_per_core_large;
                         }
                         else
                         {
-                            workitems_of_worker = workitems_per_core;
+                            workitems_of_worker = work_dist.workitems_per_core_small;
                         }
 
                         if(exec)
@@ -375,22 +351,22 @@ namespace hpx { namespace parallel { namespace util
                         // move forward in result array. again, workers that
                         // have the extra work item could have a different
                         // amount of chunks
-                        if(i < num_leftover_workitems)
+                        if(i < work_dist.num_large_workers)
                         {
-                            offset += num_chunks_large;
+                            offset += work_dist.chunks_per_core_large;
                         }
                         else
                         {
-                            offset += num_chunks_small;
+                            offset += work_dist.chunks_per_core_small;
                         }
                     }
 
                     // execute the last one on current thread
-
-                    // no need to check for extra work item, the last one
-                    // cannot have an extra one. (otherwise there would just
-                    // simply be one more for everyone, and 0 extra workitems)
-                    workitems_of_worker = workitems_per_core;
+                    
+                    // the last worker is always a small one.
+                    // (if it would be a large worker, all the workers would be
+                    //  the same size, and therefore small workers)
+                    workitems_of_worker = work_dist.workitems_per_core_small;
 
                     workers.push_back(hpx::async(hpx::launch::sync,
                         call_parallel(),
