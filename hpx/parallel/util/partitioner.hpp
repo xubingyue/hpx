@@ -188,10 +188,7 @@ namespace hpx { namespace parallel { namespace util
             // also, it prevents rounding to a chunksize of zero.
             chunksize++;
 
-            // TODO: replace couts with perfcounters
-//            std::cout << std::endl;
-//            std::cout << "chunksize: " << chunksize << std::endl;
-//            std::cout << "time per item: " << (t / test_chunk_size) << std::endl;
+            // prevent chunksize from being larger than the total amount of work
             return (std::min)(count, chunksize);
         }
 
@@ -223,6 +220,55 @@ namespace hpx { namespace parallel { namespace util
         ///////////////////////////////////////////////////////////////////////
         // The static partitioner simply spawns one chunk of iterations for
         // each available core.
+        static struct work_distribution{
+            public:
+                work_distribution(std::size_t count,
+                                  std::size_t cores,
+                                  std::size_t chunk_size)
+                {
+                    // try to split the work by the number of cores.
+                    // this will be the size of the smaller cores.
+                    workitems_per_core_small = count / cores;
+
+                    // large cores will have one workitem more.
+                    workitems_per_core_large = workitems_per_core_small + 1;
+
+                    // get number of leftover packets
+                    // this equals the number of large workers.
+                    // every leftover packet will be added to one of the
+                    // small workers, creating a large worker.
+                    num_large_workers = count % cores;
+
+                    // get number of chunks for cores with less work
+                    chunks_per_core_small = workitems_per_core_small
+                                                               / chunk_size;
+
+                    // add one (smaller) chunk if it can't be evenly divided
+                    if(workitems_per_core_small % chunk_size)
+                        chunks_per_core_small++;
+
+                    // get number of chunks for cores with more work
+                    chunks_per_core_large = workitems_per_core_large 
+                                                               / chunk_size;
+                    
+                    // add one (smaller) chunk if it can't be evenly divided
+                    if(workitems_per_core_large % chunk_size)
+                        chunks_per_core_large++;
+                   
+                    // calculate total number of chunks
+                    num_chunks_total =
+                        num_large_workers * chunks_per_core_large + 
+                        (cores - num_large_workers) * chunks_per_core_small;
+                }
+                
+                size_t num_chunks_total;
+                size_t workitems_per_core_small;
+                size_t workitems_per_core_large;
+                size_t num_large_workers;
+                size_t chunks_per_core_small;
+                size_t chunks_per_core_large;
+        };
+
         template <typename ExPolicy, typename Result = void>
         struct foreach_n_static_partitioner
         {
@@ -274,55 +320,6 @@ namespace hpx { namespace parallel { namespace util
                 }
             };
 
-        private:
-            struct work_distribution{
-                public:
-                    work_distribution(std::size_t count,
-                                      std::size_t cores,
-                                      std::size_t chunk_size)
-                    {
-                        // try to split the work by the number of cores.
-                        // this will be the size of the smaller cores.
-                        workitems_per_core_small = count / cores;
-
-                        // large cores will have one workitem more.
-                        workitems_per_core_large = workitems_per_core_small + 1;
-    
-                        // get number of leftover packets
-                        // this equals the number of large workers.
-                        // every leftover packet will be added to one of the
-                        // small workers, creating a large worker.
-                        num_large_workers = count % cores;
-    
-                        // get number of chunks for cores with less work
-                        chunks_per_core_small = workitems_per_core_small
-                                                                   / chunk_size;
-    
-                        // add one (smaller) chunk if it can't be evenly divided
-                        if(workitems_per_core_small % chunk_size)
-                            chunks_per_core_small++;
-    
-                        // get number of chunks for cores with more work
-                        chunks_per_core_large = workitems_per_core_large 
-                                                                   / chunk_size;
-                        
-                        // add one (smaller) chunk if it can't be evenly divided
-                        if(workitems_per_core_large % chunk_size)
-                            chunks_per_core_large++;
-                       
-                        // calculate total number of chunks
-                        num_chunks_total =
-                            num_large_workers * chunks_per_core_large + 
-                            (cores - num_large_workers) * chunks_per_core_small;
-                    }
-                    
-                    size_t num_chunks_total;
-                    size_t workitems_per_core_small;
-                    size_t workitems_per_core_large;
-                    size_t num_large_workers;
-                    size_t chunks_per_core_small;
-                    size_t chunks_per_core_large;
-            };
 
         public:
             template <typename FwdIter, typename F1>
@@ -348,14 +345,14 @@ namespace hpx { namespace parallel { namespace util
                     work_distribution work_dist(count, cores, chunk_size);
 
                     // resize the array to hold the workitems
-                    workitems.resize(work_dist.num_chunks_total);
+                    std::size_t workitems_offset = workitems.size();
+                    workitems.resize(workitems_offset + work_dist.num_chunks_total);
 
                     // create an array to hold the sub-threads
                     workers.reserve(cores);
 
                     // start all workers
                     std::size_t workitems_of_worker = 0;
-                    std::size_t offset = 0;
                     for(std::size_t i = 0; i < cores - 1; i++)
                     {
                         // if we have x leftover workitems, the workers 0 to x-1
@@ -377,7 +374,7 @@ namespace hpx { namespace parallel { namespace util
                                  hpx::util::make_tuple(
                                     workitems_of_worker,
                                     chunk_size,
-                                    offset,
+                                    workitems_offset,
                                     boost::ref(workitems)
                                  )));
                         }
@@ -389,7 +386,7 @@ namespace hpx { namespace parallel { namespace util
                                  hpx::util::make_tuple(
                                     workitems_of_worker,
                                     chunk_size,
-                                    offset,
+                                    workitems_offset,
                                     boost::ref(workitems)
                                  )));
                         }
@@ -403,11 +400,11 @@ namespace hpx { namespace parallel { namespace util
                         // amount of chunks
                         if(i < work_dist.num_large_workers)
                         {
-                            offset += work_dist.chunks_per_core_large;
+                            workitems_offset += work_dist.chunks_per_core_large;
                         }
                         else
                         {
-                            offset += work_dist.chunks_per_core_small;
+                            workitems_offset += work_dist.chunks_per_core_small;
                         }
                     }
 
@@ -424,7 +421,7 @@ namespace hpx { namespace parallel { namespace util
                         hpx::util::make_tuple(
                            workitems_of_worker,
                            chunk_size,
-                           offset,
+                           workitems_offset,
                            boost::ref(workitems)
                         )));
 
@@ -457,69 +454,166 @@ namespace hpx { namespace parallel { namespace util
         template <typename Result>
         struct foreach_n_static_partitioner<task_execution_policy, Result>
         {
+        private:
+            typedef hpx::util::tuple<
+                std::size_t, // count
+                std::size_t, // chunk_size
+                std::size_t, // offset
+                std::vector<hpx::future<Result> >& // workitems
+            > arguments_type;
+
+            struct call_parallel
+            {
+                template <typename FwdIter, typename F1>
+                void operator()(task_execution_policy const& policy,
+                    FwdIter first, F1 && f1, arguments_type args) const
+                {
+                    threads::executor exec = policy.get_executor();
+
+                    std::size_t count       = hpx::util::get<0>(args);
+                    std::size_t chunk_size  = hpx::util::get<1>(args);
+                    std::size_t offset      = hpx::util::get<2>(args);
+                    std::vector<hpx::future<Result> >& workitems =
+                                                            hpx::util::get<3>(args);
+
+                    while(count > chunk_size)
+                    {
+                        if(exec)
+                        {
+                            workitems[offset] = hpx::async(exec, f1, first, chunk_size);
+                        }
+                        else
+                        {
+                            workitems[offset] = hpx::async(hpx::launch::fork,
+                                                            f1, first, chunk_size);
+                        }
+                        count -= chunk_size;
+                        std::advance(first, chunk_size);
+                        offset++;
+                    }
+
+                    // execute last chunk directly
+                    if(count != 0)
+                    {
+                         workitems[offset] = hpx::async(hpx::launch::sync,
+                                                         f1, first, count);
+                         std::advance(first, count);
+                    }
+                }
+            };
+
+        public:
             template <typename FwdIter, typename F1>
             static hpx::future<FwdIter> call(
                 task_execution_policy const& policy,
                 FwdIter first, std::size_t count, F1 && f1,
                 std::size_t chunk_size)
             {
-                std::vector<hpx::future<Result> > workitems;
+                boost::shared_ptr<std::vector<hpx::future<Result> > > workitems
+                    = boost::make_shared<std::vector<hpx::future<Result> > >();
+                std::vector<hpx::future<void> > workers;
                 std::list<boost::exception_ptr> errors;
 
                 try {
                     // estimate a chunk size based on number of cores used
-                    chunk_size = get_static_chunk_size(policy, workitems, f1,
+                    chunk_size = get_static_chunk_size(policy, *workitems, f1,
                         first, count, chunk_size);
 
-                    // schedule every chunk on a separate thread
-                    workitems.reserve(count / chunk_size + 1);
-
+                    // get the executor
                     threads::executor exec = policy.get_executor();
-                    while (count > chunk_size)
+
+                    // get the number of cores
+                    std::size_t const cores = hpx::get_os_thread_count(exec);
+
+                    // calculate the work distribution
+                    work_distribution work_dist(count, cores, chunk_size);
+
+                    // resize the array to hold the workitems
+                    std::size_t workitems_offset = workitems->size();
+                    workitems->resize(workitems_offset + work_dist.num_chunks_total);
+
+                    // create an array to hold the sub-threads
+                    workers.reserve(cores);
+
+                    // start all workers
+                    std::size_t workitems_of_worker = 0;
+                    for(std::size_t i = 0; i < cores; i++)
                     {
-                        if (exec)
+                        // if we have x leftover workitems, the workers 0 to x-1
+                        // have to process one extra work item
+                        if(i < work_dist.num_large_workers)
                         {
-                            workitems.push_back(hpx::async(exec, f1, first,
-                                chunk_size));
+                            workitems_of_worker = work_dist.workitems_per_core_large;
                         }
                         else
                         {
-                            workitems.push_back(hpx::async(hpx::launch::fork, f1,
-                                first, chunk_size));
+                            workitems_of_worker = work_dist.workitems_per_core_small;
                         }
-                        count -= chunk_size;
-                        std::advance(first, chunk_size);
+
+                        if(exec)
+                        {
+                            workers.push_back(hpx::async(exec,
+                                 call_parallel(),
+                                 boost::ref(policy), first, f1,
+                                 hpx::util::make_tuple(
+                                    workitems_of_worker,
+                                    chunk_size,
+                                    workitems_offset,
+                                    boost::ref(*workitems)
+                                 )));
+                        }
+                        else
+                        {
+                            workers.push_back(hpx::async(hpx::launch::fork,
+                                 call_parallel(),
+                                 boost::ref(policy), first, f1,
+                                 hpx::util::make_tuple(
+                                    workitems_of_worker,
+                                    chunk_size,
+                                    workitems_offset,
+                                    boost::ref(*workitems)
+                                 )));
+                        }
+
+                        // move to work of next worker
+                        std::advance(first, workitems_of_worker);
+                        count -= workitems_of_worker;
+
+                        // move forward in result array. again, workers that
+                        // have the extra work item could have a different
+                        // amount of chunks
+                        if(i < work_dist.num_large_workers)
+                        {
+                            workitems_offset += work_dist.chunks_per_core_large;
+                        }
+                        else
+                        {
+                            workitems_offset += work_dist.chunks_per_core_small;
+                        }
                     }
 
-                    // add last chunk
-                    if (count != 0)
-                    {
-                        if (exec)
-                        {
-                            workitems.push_back(hpx::async(exec, f1, first, count));
-                        }
-                        else
-                        {
-                            workitems.push_back(hpx::async(hpx::launch::fork, f1,
-                                first, count));
-                        }
-                        std::advance(first, count);
-                    }
+                    // make sure that we processed all the items
+                    HPX_ASSERT(count == 0);
                 }
                 catch (...) {
                     detail::handle_local_exceptions<task_execution_policy>::call(
                         boost::current_exception(), errors);
                 }
-
-                // wait for all tasks to finish
-                return hpx::lcos::local::dataflow(
-                    [first, errors](std::vector<hpx::future<Result> > && r) mutable
+ 
+                // wait for all workers, then wait for all tasks
+                return hpx::when_all(workers).then(
+                    [first, errors, workitems]
+                    (hpx::future<std::vector<hpx::future<void>>> && workers) mutable
                     {
                         detail::handle_local_exceptions<task_execution_policy>
-                            ::call(r, errors);
+                            ::call(workers.get(), errors);
+        
+                        hpx::wait_all(*workitems);
+                        detail::handle_local_exceptions<task_execution_policy>
+                            ::call(*workitems, errors);
+                        
                         return first;
-                    },
-                    std::move(workitems));
+                    });
             }
         };
 
