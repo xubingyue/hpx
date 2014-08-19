@@ -100,17 +100,24 @@ namespace hpx { namespace parallel { namespace util
 
         ///////////////////////////////////////////////////////////////////////
         template <typename R, typename F, typename FwdIter>
-        void add_ready_future(std::vector<hpx::future<R> >& workitems,
+        boost::uint64_t add_ready_future(std::vector<hpx::future<R> >& workitems,
             F && f, FwdIter first, std::size_t count)
         {
-            workitems.push_back(hpx::make_ready_future(f(first, count)));
+            boost::uint64_t t = hpx::util::high_resolution_clock::now();
+            R ret = f(first, count);
+            t = (hpx::util::high_resolution_clock::now() - t);
+            workitems.push_back(hpx::make_ready_future(ret));
+            return t;
         }
 
         template <typename F, typename FwdIter>
-        void add_ready_future(std::vector<hpx::future<void> >&,
+        boost::uint64_t add_ready_future(std::vector<hpx::future<void> >&,
             F && f, FwdIter first, std::size_t count)
         {
+            boost::uint64_t t = hpx::util::high_resolution_clock::now();
             f(first, count);
+            t = (hpx::util::high_resolution_clock::now() - t);
+            return t;
         }
 
         // estimate a chunk size based on number of cores used
@@ -121,7 +128,7 @@ namespace hpx { namespace parallel { namespace util
             F1 && f1, FwdIter& first, std::size_t& count)
         {
             std::size_t startup_size = 1; // one startup iteration
-            std::size_t test_chunk_size = (std::max)(count / 1000, (std::size_t)1);
+            std::size_t test_chunk_size = 1; //(std::max)(count / 1000, (std::size_t)1);
 
             // get executor
             threads::executor exec = policy.get_executor();
@@ -134,19 +141,7 @@ namespace hpx { namespace parallel { namespace util
 
             // If no chunktime is supplied, fall back to 64us * cores
             if(desired_chunktime_ns.count() == 0)
-                desired_chunktime_ns = boost::chrono::nanoseconds(64000 * cores);
-
-            // generate work for the other cores.
-            // this reduces the sequential portion of the code
-            // and prevents wrong timing results by work-stealing attempts
-            for(int i = 0; i < 2* (cores - 1) && count >= test_chunk_size; i++)
-            {
-                workitems.push_back(hpx::async(exec, f1, first,
-                                               test_chunk_size));
-
-                count -= test_chunk_size;
-                std::advance(first, test_chunk_size);
-            }
+                desired_chunktime_ns = boost::chrono::nanoseconds(512000);
 
             // make sure we have enough work left to actually run the benchmark
             if(count < test_chunk_size + startup_size) return 0;
@@ -160,36 +155,45 @@ namespace hpx { namespace parallel { namespace util
                 count -= startup_size;
             }
 
-            // start timer
-            boost::uint64_t t = hpx::util::high_resolution_clock::now();
-
             // run the benchmark iteration
-            add_ready_future(workitems, f1, first, test_chunk_size);
-
-            // stop timer
-            t = (hpx::util::high_resolution_clock::now() - t);
+            boost::uint64_t t = add_ready_future(workitems, f1, first, test_chunk_size);
 
             // mark benchmarked items as processed
             std::advance(first, test_chunk_size);
             count -= test_chunk_size;
 
-            // don't calculate chunk size if time difference was too small to
-            // be measured
-            if(t == 0) return 0;
+            // get the timer step size
+            boost::uint64_t t_min = hpx::util::high_resolution_clock::min();
 
-            // calculate desired chunksize from measured time
-            HPX_ASSERT(desired_chunktime_ns.count() >= 0);
-            std::size_t chunksize = static_cast<std::size_t>(
-                (test_chunk_size * (uint128_t)desired_chunktime_ns.count()) / t);
+            // if time was smaller than being able to measure, consider it to be
+            // the smallest possible amount of time. this will get important,
+            // and is an approximation necessary to prevent the creation of too
+            // many asyncs.
+            if(t <= t_min) t = t_min;
 
-            // round up, not down.
-            // this ensures that chunksize is rather too big than too small.
-            // (too small is much worse than too big)
-            // also, it prevents rounding to a chunksize of zero.
-            chunksize++;
+            // calculate number of chunks, round
+            std::size_t num_chunks_dividend = static_cast<std::size_t>
+                                (t * count);
+            std::size_t num_chunks_divisor  = static_cast<std::size_t>
+                                (test_chunk_size * desired_chunktime_ns.count());
+            std::size_t num_chunks =
+                                (num_chunks_dividend + num_chunks_divisor / 2) 
+                                                            / num_chunks_divisor;
 
-            // prevent chunksize from being larger than the total amount of work
-            return (std::min)(count, chunksize);
+            // if benchmark returned smallest amount of time, prevent creation
+            // of too many asyncs and do normal geometric distribution
+            if(t == t_min && num_chunks > cores)
+                num_chunks = cores;
+
+            // prevent 0 chunks
+            if(num_chunks == 0) num_chunks = 1;
+
+            // calculate desired chunksize from number of chunks, ceil
+            std::size_t chunksize = (count + num_chunks - 1) / num_chunks; 
+
+            std::cout << "num_chunks: " << num_chunks << "\n" << std::flush;
+            std::cout << "chunksize:  " << chunksize << "\n" << std::flush;
+            return chunksize;
         }
 
         template <typename ExPolicy, typename Result, typename F1,
@@ -206,7 +210,7 @@ namespace hpx { namespace parallel { namespace util
                 if (chunk_size == 0)
                 {
                     std::size_t const cores = hpx::get_os_thread_count(exec);
-                    if(count >= 20*cores)
+                    if(count >= 100*cores)
                         chunk_size = auto_chunk_size(policy, workitems, f1,
                                                      first, count);
 
@@ -280,7 +284,7 @@ namespace hpx { namespace parallel { namespace util
                 std::vector<hpx::future<Result> >& // workitems
             > arguments_type;
 
-            struct call_parallel
+            struct call_parallel_sub
             {
                 template <typename FwdIter, typename F1>
                 void operator()(ExPolicy const& policy, FwdIter first,
@@ -323,18 +327,66 @@ namespace hpx { namespace parallel { namespace util
 
         public:
             template <typename FwdIter, typename F1>
-            static FwdIter call(ExPolicy const& policy, FwdIter first,
+            static FwdIter call_nonparallel(ExPolicy const& policy,
+                std::vector<hpx::future<Result> > && workitems, FwdIter first,
                 std::size_t count, F1 && f1, std::size_t chunk_size)
             {
-                std::vector<hpx::future<Result> > workitems;
+                std::list<boost::exception_ptr> errors;
+
+                try {
+                    // get number of chunks
+                    std::size_t num_chunks = (count + chunk_size - 1) / chunk_size;
+
+                    workitems.reserve(workitems.size() + num_chunks);
+
+                    // get the executor
+                    threads::executor exec = policy.get_executor();
+
+                    while (count > chunk_size)
+                    {
+                        if (exec)
+                        {
+                            workitems.push_back(hpx::async(exec, f1, first,
+                                chunk_size));
+                        }
+                        else
+                        {
+                            workitems.push_back(hpx::async(hpx::launch::fork,
+                                f1, first, chunk_size));
+                        }
+                        count -= chunk_size;
+                        std::advance(first, chunk_size);
+                    }
+
+                    if (count != 0)
+                    {
+                        workitems.push_back(hpx::async(hpx::launch::sync,
+                            f1, first, chunk_size));
+                    }
+                }
+                catch (...) {
+                    detail::handle_local_exceptions<ExPolicy>::call(
+                        boost::current_exception(), errors);
+                }
+
+                // wait for all tasks to finish
+                hpx::wait_all(workitems);
+                detail::handle_local_exceptions<ExPolicy>::call(
+                        workitems, errors);
+
+                return first;
+
+            }
+
+            template <typename FwdIter, typename F1>
+            static FwdIter call_parallel(ExPolicy const& policy,
+                std::vector<hpx::future<Result> > && workitems, FwdIter first,
+                std::size_t count, F1 && f1, std::size_t chunk_size)
+            {
                 std::vector<hpx::future<void> > workers;
                 std::list<boost::exception_ptr> errors;
 
                 try {
-                    // estimate a chunk size based on number of cores used
-                    chunk_size = get_static_chunk_size(policy, workitems, f1,
-                        first, count, chunk_size);
-
                     // get the executor
                     threads::executor exec = policy.get_executor();
 
@@ -369,7 +421,7 @@ namespace hpx { namespace parallel { namespace util
                         if(exec)
                         {
                             workers.push_back(hpx::async(exec,
-                                 call_parallel(),
+                                 call_parallel_sub(),
                                  boost::ref(policy), first, f1,
                                  hpx::util::make_tuple(
                                     workitems_of_worker,
@@ -381,7 +433,7 @@ namespace hpx { namespace parallel { namespace util
                         else
                         {
                             workers.push_back(hpx::async(hpx::launch::fork,
-                                 call_parallel(),
+                                 call_parallel_sub(),
                                  boost::ref(policy), first, f1,
                                  hpx::util::make_tuple(
                                     workitems_of_worker,
@@ -416,7 +468,7 @@ namespace hpx { namespace parallel { namespace util
                     workitems_of_worker = work_dist.workitems_per_core_small;
 
                     workers.push_back(hpx::async(hpx::launch::sync,
-                        call_parallel(),
+                        call_parallel_sub(),
                         boost::ref(policy), first, f1,
                         hpx::util::make_tuple(
                            workitems_of_worker,
@@ -447,6 +499,40 @@ namespace hpx { namespace parallel { namespace util
                     workitems, errors);
 
                 return first;
+            }
+            
+            template <typename FwdIter, typename F1>
+            static FwdIter call(ExPolicy const& policy, FwdIter first,
+                std::size_t count, F1 && f1, std::size_t chunk_size)
+            {
+                std::vector<hpx::future<Result> > workitems;
+
+                // estimate a chunk size based on number of cores used
+                chunk_size = get_static_chunk_size(policy, workitems, f1,
+                    first, count, chunk_size);
+
+                // get the executor
+                threads::executor exec = policy.get_executor();
+
+                // get the number of cores
+                std::size_t const cores = hpx::get_os_thread_count(exec);
+
+                // get number of chunks
+                std::size_t num_chunks = (count + chunk_size - 1) / chunk_size;
+
+                // decide which algorithm to use
+                if(num_chunks <= cores)
+                {
+                    std::cout << "nonparallel\n" << std::flush;
+                    return call_nonparallel(policy, std::move(workitems),
+                                first, count, f1, chunk_size);
+                }
+                else
+                {
+                    std::cout << "parallel\n" << std::flush;
+                    return call_parallel(policy, std::move(workitems),
+                                first, count, f1, chunk_size);
+                }
             }
         };
 
