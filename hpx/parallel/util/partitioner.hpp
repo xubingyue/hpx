@@ -224,53 +224,51 @@ namespace hpx { namespace parallel { namespace util
         ///////////////////////////////////////////////////////////////////////
         // The static partitioner simply spawns one chunk of iterations for
         // each available core.
-        struct work_distribution{
-            public:
-                work_distribution(std::size_t count,
-                                  std::size_t cores,
-                                  std::size_t chunk_size)
-                {
-                    // try to split the work by the number of cores.
-                    // this will be the size of the smaller cores.
-                    workitems_per_core_small = count / cores;
+        struct work_distribution
+        {
+            work_distribution(std::size_t count,
+                              std::size_t cores,
+                              std::size_t chunk_size)
+            {
+                // try to split the work by the number of cores.
+                // this will be the size of the smaller cores.
+                workitems_per_core_small = count / cores;
 
-                    // large cores will have one workitem more.
-                    workitems_per_core_large = workitems_per_core_small + 1;
+                // large cores will have one work item more.
+                workitems_per_core_large = workitems_per_core_small + 1;
 
-                    // get number of leftover packets
-                    // this equals the number of large workers.
-                    // every leftover packet will be added to one of the
-                    // small workers, creating a large worker.
-                    num_large_workers = count % cores;
+                // get number of leftover packets
+                // this equals the number of large workers.
+                // every leftover packet will be added to one of the
+                // small workers, creating a large worker.
+                num_large_workers = count % cores;
 
-                    // get number of chunks for cores with less work
-                    chunks_per_core_small = workitems_per_core_small
-                                                               / chunk_size;
+                // get number of chunks for cores with less work
+                chunks_per_core_small = workitems_per_core_small / chunk_size;
 
-                    // add one (smaller) chunk if it can't be evenly divided
-                    if(workitems_per_core_small % chunk_size)
-                        chunks_per_core_small++;
+                // add one (smaller) chunk if it can't be evenly divided
+                if(workitems_per_core_small % chunk_size)
+                    chunks_per_core_small++;
 
-                    // get number of chunks for cores with more work
-                    chunks_per_core_large = workitems_per_core_large 
-                                                               / chunk_size;
-                    
-                    // add one (smaller) chunk if it can't be evenly divided
-                    if(workitems_per_core_large % chunk_size)
-                        chunks_per_core_large++;
-                   
-                    // calculate total number of chunks
-                    num_chunks_total =
-                        num_large_workers * chunks_per_core_large + 
-                        (cores - num_large_workers) * chunks_per_core_small;
-                }
-                
-                size_t num_chunks_total;
-                size_t workitems_per_core_small;
-                size_t workitems_per_core_large;
-                size_t num_large_workers;
-                size_t chunks_per_core_small;
-                size_t chunks_per_core_large;
+                // get number of chunks for cores with more work
+                chunks_per_core_large = workitems_per_core_large / chunk_size;
+
+                // add one (smaller) chunk if it can't be evenly divided
+                if(workitems_per_core_large % chunk_size)
+                    chunks_per_core_large++;
+
+                // calculate total number of chunks
+                num_chunks_total =
+                    num_large_workers * chunks_per_core_large +
+                    (cores - num_large_workers) * chunks_per_core_small;
+            }
+
+            size_t num_chunks_total;
+            size_t workitems_per_core_small;
+            size_t workitems_per_core_large;
+            size_t num_large_workers;
+            size_t chunks_per_core_small;
+            size_t chunks_per_core_large;
         };
 
         template <typename ExPolicy, typename Result = void>
@@ -323,7 +321,6 @@ namespace hpx { namespace parallel { namespace util
                     }
                 }
             };
-
 
         public:
             template <typename FwdIter, typename F1>
@@ -461,7 +458,7 @@ namespace hpx { namespace parallel { namespace util
                     }
 
                     // execute the last one on current thread
-                    
+
                     // the last worker is always a small one.
                     // (if it would be a large worker, all the workers would be
                     //  the same size, and therefore small workers)
@@ -685,19 +682,19 @@ namespace hpx { namespace parallel { namespace util
                     detail::handle_local_exceptions<task_execution_policy>::call(
                         boost::current_exception(), errors);
                 }
- 
+
                 // wait for all workers, then wait for all tasks
                 return hpx::when_all(workers).then(
                     [first, errors, workitems]
-                    (hpx::future<std::vector<hpx::future<void>>> && workers) mutable
+                    (hpx::future<std::vector<hpx::future<void> > > && workers) mutable
                     {
                         detail::handle_local_exceptions<task_execution_policy>
                             ::call(workers.get(), errors);
-        
+
                         hpx::wait_all(*workitems);
                         detail::handle_local_exceptions<task_execution_policy>
                             ::call(*workitems, errors);
-                        
+
                         return first;
                     });
             }
