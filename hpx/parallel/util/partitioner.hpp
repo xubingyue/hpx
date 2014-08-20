@@ -165,6 +165,16 @@ namespace hpx { namespace parallel { namespace util
             // get the timer step size
             boost::uint64_t t_min = hpx::util::high_resolution_clock::min();
 
+            // subtract 500 (constant measurement overhead)
+            if(t <= 500)
+            {
+                t = 0;
+            }
+            else
+            {
+                t -= 500;
+            }
+
             // if time was smaller than being able to measure, consider it to be
             // the smallest possible amount of time. this will get important,
             // and is an approximation necessary to prevent the creation of too
@@ -182,7 +192,7 @@ namespace hpx { namespace parallel { namespace util
 
             // if benchmark returned smallest amount of time, prevent creation
             // of too many asyncs and do normal geometric distribution
-            if(t == t_min && num_chunks > cores)
+            if((t <= t_min) && num_chunks > cores)
                 num_chunks = cores;
 
             // prevent 0 chunks
