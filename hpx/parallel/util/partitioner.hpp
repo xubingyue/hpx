@@ -191,8 +191,6 @@ namespace hpx { namespace parallel { namespace util
             // calculate desired chunksize from number of chunks, ceil
             std::size_t chunksize = (count + num_chunks - 1) / num_chunks; 
 
-            std::cout << "num_chunks: " << num_chunks << "\n" << std::flush;
-            std::cout << "chunksize:  " << chunksize << "\n" << std::flush;
             return chunksize;
         }
 
@@ -520,13 +518,11 @@ namespace hpx { namespace parallel { namespace util
                 // decide which algorithm to use
                 if(num_chunks <= cores)
                 {
-                    std::cout << "nonparallel\n" << std::flush;
                     return call_nonparallel(policy, std::move(workitems),
                                 first, count, f1, chunk_size);
                 }
                 else
                 {
-                    std::cout << "parallel\n" << std::flush;
                     return call_parallel(policy, std::move(workitems),
                                 first, count, f1, chunk_size);
                 }
