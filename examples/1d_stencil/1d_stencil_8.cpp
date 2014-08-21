@@ -1,5 +1,4 @@
 //  Copyright (c) 2014 Hartmut Kaiser
-//  Copyright (c) 2014 Patricia Grubel
 //
 //  Distributed under the Boost Software License, Version 1.0. (See accompanying
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -18,6 +17,8 @@
 
 #include "print_time_results.hpp"
 
+#include <stack>
+
 ///////////////////////////////////////////////////////////////////////////////
 // Command-line variables
 bool header = true; // print csv heading
@@ -29,10 +30,80 @@ char const* stepper_basename = "/1d_stencil_8/stepper/";
 char const* gather_basename = "/1d_stencil_8/gather/";
 
 ///////////////////////////////////////////////////////////////////////////////
+// Use a special allocator for the partition data to remove a major contention
+// point - the constant allocation and deallocation of the data arrays.
+template <typename T>
+struct partition_allocator
+{
+private:
+    typedef hpx::lcos::local::spinlock mutex_type;
+
+public:
+    partition_allocator(std::size_t max_size = std::size_t(-1))
+      : max_size_(max_size)
+    {
+    }
+
+    ~partition_allocator()
+    {
+        mutex_type::scoped_lock l(mtx_);
+        while (!heap_.empty())
+        {
+            T* p = heap_.top();
+            heap_.pop();
+            delete [] p;
+        }
+    }
+
+    T* allocate(std::size_t n)
+    {
+        mutex_type::scoped_lock l(mtx_);
+        if (heap_.empty())
+            return new T[n];
+
+        T* next = heap_.top();
+        heap_.pop();
+        return next;
+    }
+
+    void deallocate(T* p)
+    {
+        mutex_type::scoped_lock l(mtx_);
+        if (max_size_ == std::atomic_size_t(-1) || heap_.size() < max_size_)
+            heap_.push(p);
+        else
+            delete [] p;
+    }
+
+private:
+    mutex_type mtx_;
+    std::size_t max_size_;
+    std::stack<T*> heap_;
+};
+
+///////////////////////////////////////////////////////////////////////////////
 struct partition_data
 {
 private:
     typedef hpx::util::serialize_buffer<double> buffer_type;
+
+    struct hold_reference
+    {
+        hold_reference(buffer_type const& data)
+          : data_(data)
+        {}
+
+        void operator()(double*) {}     // no deletion necessary
+
+        buffer_type data_;
+    };
+
+    static void deallocate(double* p)
+    {
+        alloc_.deallocate(p);
+    }
+
+    static partition_allocator<double> alloc_;
 
 public:
     partition_data()
@@ -41,14 +112,16 @@ public:
 
     // Create a new (uninitialized) partition of the given size.
     partition_data(std::size_t size)
-      : data_(new double [size], size, buffer_type::take),
+      : data_(alloc_.allocate(size), size, buffer_type::take,
+            &partition_data::deallocate),
         size_(size),
         min_index_(0)
     {}
 
     // Create a new (initialized) partition of the given size.
     partition_data(std::size_t size, double initial_value)
-      : data_(new double [size], size, buffer_type::take),
+      : data_(alloc_.allocate(size), size, buffer_type::take,
+            &partition_data::deallocate),
         size_(size),
         min_index_(0)
     {
@@ -61,7 +134,8 @@ public:
     // The proxy is assumed to refer to either the left or the right boundary
     // element.
     partition_data(partition_data const& base, std::size_t min_index)
-      : data_(base.data_.data()+min_index, 1, buffer_type::reference),
+      : data_(base.data_.data()+min_index, 1, buffer_type::reference,
+            hold_reference(base.data_)),      // keep referenced partition alive
         size_(base.size()),
         min_index_(min_index)
     {
@@ -97,6 +171,8 @@ private:
     std::size_t size_;
     std::size_t min_index_;
 };
+
+partition_allocator<double> partition_data::alloc_;
 
 std::ostream& operator<<(std::ostream& os, partition_data const& c)
 {
@@ -494,7 +570,7 @@ int hpx_main(boost::program_options::variables_map& vm)
         for (std::size_t i = 0; i != nl; ++i)
         {
             stepper_server::space const& s = solution[i];
-            for (std::size_t i = 0; i != np; ++i)
+            for (std::size_t i = 0; i != s.size(); ++i)
                 s[i].get_data(partition_server::middle_partition).wait();
         }
 
@@ -515,8 +591,9 @@ int hpx_main(boost::program_options::variables_map& vm)
             }
         }
 
-        boost::uint64_t const os_thread_count = hpx::get_os_thread_count();
-        print_time_results(os_thread_count, elapsed, nx, np, nt, header);
+        boost::uint64_t const num_worker_threads = hpx::get_num_worker_threads();
+        hpx::future<boost::uint32_t> locs = hpx::get_num_localities();
+        print_time_results(locs.get(),num_worker_threads, elapsed, nx, np, nt, header);
     }
     else
     {

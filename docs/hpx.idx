@@ -100,9 +100,19 @@ parallel::move                        "move" "hpx\.parallel\.v1\.move$"
 # hpx/parallel/detail/reduce.hpp
 parallel::reduce                      "reduce" "hpx\.parallel\.v1\.reduce.*"
 
+# hpx/parallel/detail/replace.hpp
+parallel::replace                     "replace" "hpx\.parallel\.v1\.replace$"
+parallel::replace_if                  "replace_if" "hpx\.parallel\.v1\.replace_if.*"
+parallel::replace_copy                "replace_copy" "hpx\.parallel\.v1\.replace_copy$"
+parallel::replace_copy_if             "replace_copy_if" "hpx\.parallel\.v1\.replace_copy_if.*"
+
 # hpx/parallel/detail/reverse.hpp
 parallel::reverse                     "reverse" "hpx\.parallel\.v1\.reverse$"
 parallel::reverse_copy                "reverse_copy" "hpx\.parallel\.v1\.reverse_copy.*"
+
+# hpx/parallel/detail/rotate.hpp
+parallel::rotate                      "rotate" "hpx\.parallel\.v1\.rotate"
+parallel::rotate_copy                 "rotate_copy" "hpx\.parallel\.v1\.rotate_copy.*"
 
 # hpx/parallel/detail/swap_ranges.hpp
 parallel::swap_ranges                 "swap_ranges" "hpx\.parallel\.v1\.swap_ranges.*"
