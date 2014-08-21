@@ -141,7 +141,7 @@ namespace hpx { namespace parallel { namespace util
 
             // If no chunktime is supplied, fall back to 64us * cores
             if(desired_chunktime_ns.count() == 0)
-                desired_chunktime_ns = boost::chrono::nanoseconds(512000);
+                desired_chunktime_ns = boost::chrono::nanoseconds(1000000);
 
             // make sure we have enough work left to actually run the benchmark
             if(count < test_chunk_size + startup_size) return 0;
@@ -165,14 +165,14 @@ namespace hpx { namespace parallel { namespace util
             // get the timer step size
             boost::uint64_t t_min = hpx::util::high_resolution_clock::min();
 
-            // subtract 500 (constant measurement overhead)
-            if(t <= 500)
+            // subtract 300 (constant measurement overhead)
+            if(t <= 300)
             {
                 t = 0;
             }
             else
             {
-                t -= 500;
+                t -= 300;
             }
 
             // if time was smaller than being able to measure, consider it to be
@@ -293,7 +293,7 @@ namespace hpx { namespace parallel { namespace util
             struct call_parallel_sub
             {
                 template <typename FwdIter, typename F1>
-                void operator()(ExPolicy const& policy, FwdIter first,
+                void operator()(ExPolicy const policy, FwdIter first,
                     F1 && f1, arguments_type args) const
                 {
                     threads::executor exec = policy.get_executor();
@@ -427,7 +427,7 @@ namespace hpx { namespace parallel { namespace util
                         {
                             workers.push_back(hpx::async(exec,
                                  call_parallel_sub(),
-                                 boost::ref(policy), first, f1,
+                                 policy, first, f1,
                                  hpx::util::make_tuple(
                                     workitems_of_worker,
                                     chunk_size,
@@ -439,7 +439,7 @@ namespace hpx { namespace parallel { namespace util
                         {
                             workers.push_back(hpx::async(hpx::launch::fork,
                                  call_parallel_sub(),
-                                 boost::ref(policy), first, f1,
+                                 policy, first, f1,
                                  hpx::util::make_tuple(
                                     workitems_of_worker,
                                     chunk_size,
@@ -474,7 +474,7 @@ namespace hpx { namespace parallel { namespace util
 
                     workers.push_back(hpx::async(hpx::launch::sync,
                         call_parallel_sub(),
-                        boost::ref(policy), first, f1,
+                        policy, first, f1,
                         hpx::util::make_tuple(
                            workitems_of_worker,
                            chunk_size,
@@ -554,7 +554,7 @@ namespace hpx { namespace parallel { namespace util
             struct call_parallel
             {
                 template <typename FwdIter, typename F1>
-                void operator()(task_execution_policy const& policy,
+                void operator()(task_execution_policy const policy,
                     FwdIter first, F1 && f1, arguments_type args) const
                 {
                     threads::executor exec = policy.get_executor();
@@ -643,7 +643,7 @@ namespace hpx { namespace parallel { namespace util
                         {
                             workers.push_back(hpx::async(exec,
                                  call_parallel(),
-                                 boost::ref(policy), first, f1,
+                                 policy, first, f1,
                                  hpx::util::make_tuple(
                                     workitems_of_worker,
                                     chunk_size,
@@ -655,7 +655,7 @@ namespace hpx { namespace parallel { namespace util
                         {
                             workers.push_back(hpx::async(hpx::launch::fork,
                                  call_parallel(),
-                                 boost::ref(policy), first, f1,
+                                 policy, first, f1,
                                  hpx::util::make_tuple(
                                     workitems_of_worker,
                                     chunk_size,
