@@ -75,7 +75,7 @@
 [def __boost_atomic__           [@http://www.boost.org/doc/libs/release/doc/html/atomic.html Boost.Atomic]]
 [def __boost_serialization__    [@http://www.boost.org/doc/libs/release/libs/serialization/doc/index.html Boost.Serialization]]
 
-[def __hwloc_downloads__        [@http://www.open-mpi.org/software/hwloc/v1.7/ hwloc Downloads]]
+[def __hwloc_downloads__        [@http://www.open-mpi.org/software/hwloc/v1.7/ hwloc]]
 [def __doxygen__                [@http://www.doxygen.org Doxygen]]
 
 [def __macports__               [@http://www.macports.org/ MacPorts]]
@@ -86,6 +86,7 @@
 [def __ctest_doc__              [@http://www.cmake.org/cmake/help/v2.8.11/ctest.html CTest Documentation]]
 [def __cmake_download__         [@http://www.cmake.org/cmake/resources/software.html CMake Downloads]]
 [def __gcc__                    [@http://gcc.gnu.org GNU Compiler Collection (g++)]]
+[def __clang__                  [@http://clang.llvm.org/ clang: a C language family frontend for LLVM]]
 [def __icpc__                   [@http://software.intel.com/en-us/intel-composer-xe/ Intel Composer XE Suites]]
 [def __gmake__                  [@http://www.gnu.org/software/make GNU Make (gmake)]]
 [def __eglibc__                 [@http://eglibc.org/home Embedded GLIBC (EGLIBC)]]
@@ -98,8 +99,8 @@
 [def __libunwind__              [@http://www.nongnu.org/libunwind libunwind]]
 [def __hdf5__                   [@http://www.hdfgroup.org/HDF5 Hierarchical Data Format V5 (HDF5)]]
 [def __lorene__                 [@http://www.lorene.obspm.fr LORENE]]
-[def __papi__                   [@http://icl.cs.utk.edu/papi/ Networking and Cryptography library (NaCl)]]
-[def __sodium__                 [@http://nacl.cr.yp.to/ Performance Application Programming Interface (PAPI)]]
+[def __sodium__                 [@http://icl.cs.utk.edu/papi/ Networking and Cryptography library (NaCl)]]
+[def __papi__                   [@http://nacl.cr.yp.to/ Performance Application Programming Interface (PAPI)]]
 [def __lapack__                 [@http://math-atlas.sourceforge.net/ Linear Algebra PACKage (LAPACK)]]
 [def __blas__                   [@http://math-atlas.sourceforge.net/ Basic Linear Algebra Subroutines 3 (BLAS)]]
 [def __gsl__                    [@http://www.gnu.org/software/gsl/ GNU Scientific Library (GSL)]]
@@ -120,8 +121,9 @@
 [def __cpp11_n3632__            [@http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2013/n3632.html N3632]]
 [def __cpp11_n3634__            [@http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n3857.pdf N3857]]
 [def __cpp11_n3562__            [@http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2013/n3562.pdf N3562]]
-[def __cpp11_n4071__            [@http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4071.htm N4071]]
-[def __cpp11_n4088__            [@http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4088.pdf N4088ppl]]
+[def __cpp11_n4088__            [@http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4088.pdf N4088]]
+[def __cpp11_n4104__            [@http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4104.html N4104]]
+[def __cpp11_n4107__            [@http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4107.html N4107]]
 
 
 [def __ini_file_format__        [@http://en.wikipedia.org/wiki/INI_file Windows INI file format]]
@@ -150,13 +152,12 @@
 
 [/ template definitions]
 [template cxx_crtp              [@http://en.wikipedia.org/wiki/Curiously_recurring_template_pattern [str]]]
-[template issue[num]            '''<ulink url="http://github.com/STEllAR-GROUP/hpx/issues/'''[num]'''">'''#[num]'''</ulink>''']
 
 [/ Section link shortcuts]
-[def __boost_installation__     [link hpx.tutorial.getting_started.boost_installation Installing Boost Libraries]]
-[def __unix_installation__      [link hpx.tutorial.getting_started.unix_installation How to Install __hpx__ on Unix Variants]]
-[def __macos_installation__     [link hpx.tutorial.getting_started.macos_installation How to Install __hpx__ on Mac OS]]
-[def __windows_installation__   [link hpx.tutorial.getting_started.windows_installation How to Install __hpx__ on Windows]]
+[def __boost_installation__     [link hpx.manual.build_system.prerequisites.boost_installation Installing Boost Libraries]]
+[def __unix_installation__      [link hpx.manual.build_system.building_hpx.build_recipes.unix_installation How to Install __hpx__ on Unix Variants]]
+[def __macos_installation__     [link hpx.manual.build_system.building_hpx.build_recipes.macos_installation How to Install __hpx__ on Mac OS]]
+[def __windows_installation__   [link hpx.manual.build_system.building_hpx.build_recipes.windows_installation How to Install __hpx__ on Windows]]
 [def __using_pbs__              [link hpx.tutorial.getting_started.unix_pbs Using PBS]]
 [def __using_slurm__            [link hpx.tutorial.getting_started.unix_slurm Using SLURM]]
 
@@ -189,12 +190,12 @@
 
 [def __scheduling__             [link hpx.manual.schedulers __hpx__ Thread Scheduling Policies]]
 
-[def __cmake_hpx__              [link hpx.manual.cmake Building __hpx__ with CMake]]
-[def __cmake_quick_start__      [link hpx.manual.cmake.quick_start Quick Start]]
-[def __cmake_basic_usage__      [link hpx.manual.cmake.basic_usage Basic CMake Usage]]
-[def __cmake_options__          [link hpx.manual.cmake.options Options and Variables]]
+[def __cmake_hpx__              [link hpx.manual.build_system.building_hpx Building __hpx__ with CMake]]
+[def __cmake_quick_start__      [link hpx.manual.build_system.cmake_basics CMake Quick Start]]
+[def __cmake_basic_usage__      [link hpx.build_system.basic_cmake_usage Basic CMake Usage]]
+[def __cmake_options__          [link hpx.manual.build_system.building_hpx.cmake_variables CMake Variables used to configure __hpx__]]
 [def __cmake_doc_tools__        [link hpx.manual.cmake.doc_tools Setting up the HPX Documentation Tool Chain]]
-[def __pkg_config__             [link hpx.manual.cmake.unix_comps_pkg_config How to Build __hpx__ Components with pkg-config]]
+[def __pkg_config__             [link hpx.manual.build_system.using_hpx.pkgconfig.comps How to Build __hpx__ Components with pkg-config]]
 
 [/ Do not add any whitespace between [str]and the template body, it ends up in the
    generated docs, which may cause unwanted effects.]
@@ -203,6 +204,7 @@
 [template hpx_link[url txt]     '''<ulink url="'''__hpx_source_dir__'''/'''[url]'''">'''[txt]'''</ulink>''']
 
 [template git_commit_link[commit] '''<ulink url="https://github.com/STEllAR-GROUP/hpx/commit/'''[commit]'''">'''[commit]'''</ulink>''']
+[template issue[num]            '''<ulink url="http://github.com/STEllAR-GROUP/hpx/issues/'''[num]'''">'''#[num]'''</ulink>''']
 
 [/  fig[ref title label]
     Image element with a title.
@@ -288,7 +290,7 @@ __boost_auto_index__ can be found in the collection of __boost_tools__.
 [/////////////////////////////////////////////////////////////////////////////]
 [section:manual Manual]
 
-[include manual/cmake.qbk]
+[include manual/build_system.qbk]
 [include manual/testing.qbk]
 
 [/////////////////////////////////////////////////////////////////////////////]

@@ -263,8 +263,7 @@ void test_mismatch_exception(ExPolicy const& policy, IteratorTag)
             iterator(boost::begin(c1)), iterator(boost::end(c1)),
             boost::begin(c2),
             [](std::size_t v1, std::size_t v2) {
-                throw std::runtime_error("test");
-                return true;
+                return throw std::runtime_error("test"), true;
             });
 
         HPX_TEST(false);
@@ -296,9 +295,6 @@ void test_mismatch_exception(hpx::parallel::task_execution_policy, IteratorTag)
     std::iota(boost::begin(c1), boost::end(c1), first_value);
     std::iota(boost::begin(c2), boost::end(c2), first_value);
 
-    iterator begin1 = iterator(boost::begin(c1));
-    iterator end1 = iterator(boost::end(c1));
-
     bool caught_exception = false;
     try {
         hpx::future<return_type> f =
@@ -306,8 +302,7 @@ void test_mismatch_exception(hpx::parallel::task_execution_policy, IteratorTag)
                 iterator(boost::begin(c1)), iterator(boost::end(c1)),
                 boost::begin(c2),
                 [](std::size_t v1, std::size_t v2) {
-                    throw std::runtime_error("test");
-                    return true;
+                    return throw std::runtime_error("test"), true;
                 });
 
         f.get();
@@ -376,8 +371,7 @@ void test_mismatch_bad_alloc(ExPolicy const& policy, IteratorTag)
             iterator(boost::begin(c1)), iterator(boost::end(c1)),
             boost::begin(c2),
             [](std::size_t v1, std::size_t v2) {
-                throw std::bad_alloc();
-                return true;
+                return throw std::bad_alloc(), true;
             });
 
         HPX_TEST(false);
@@ -408,9 +402,6 @@ void test_mismatch_bad_alloc(hpx::parallel::task_execution_policy, IteratorTag)
     std::iota(boost::begin(c1), boost::end(c1), first_value);
     std::iota(boost::begin(c2), boost::end(c2), first_value);
 
-    iterator begin1 = iterator(boost::begin(c1));
-    iterator end1 = iterator(boost::end(c1));
-
     bool caught_bad_alloc = false;
     try {
         hpx::future<return_type> f =
@@ -418,8 +409,7 @@ void test_mismatch_bad_alloc(hpx::parallel::task_execution_policy, IteratorTag)
                 iterator(boost::begin(c1)), iterator(boost::end(c1)),
                 boost::begin(c2),
                 [](std::size_t v1, std::size_t v2) {
-                    throw std::bad_alloc();
-                    return true;
+                    return throw std::bad_alloc(), true;
                 });
 
         f.get();

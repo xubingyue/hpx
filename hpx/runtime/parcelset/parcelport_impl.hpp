@@ -304,7 +304,7 @@ namespace hpx { namespace parcelset
         ///////////////////////////////////////////////////////////////////////////
         // the code below is needed to bootstrap the parcel layer
         void early_pending_parcel_handler(
-            boost::system::error_code const& ec, std::size_t size, parcel const & p)
+            boost::system::error_code const& ec, parcel const & p)
         {
             if (ec) {
                 // all errors during early parcel handling are fatal
@@ -335,7 +335,6 @@ namespace hpx { namespace parcelset
                     &parcelport_impl::early_pending_parcel_handler
                   , this
                   , ::_1
-                  , ::_2
                   , p
                 )
             );
@@ -701,13 +700,12 @@ namespace hpx { namespace parcelset
             }
 #endif
             // encode the parcels
-            boost::shared_ptr<parcel_buffer<typename connection::buffer_type> >
-                buffer = encode_parcels(parcels, *sender_connection,
+            encode_parcels(parcels, *sender_connection,
                     archive_flags_, this->enable_security());
 
             // send them asynchronously
             sender_connection->async_write(
-                hpx::parcelset::detail::call_for_each(std::move(handlers)),
+                hpx::parcelset::detail::call_for_each(std::move(handlers), parcels[0]),
                 boost::bind(&parcelport_impl::send_pending_parcels_trampoline,
                     this,
                     ::_1, ::_2, ::_3));

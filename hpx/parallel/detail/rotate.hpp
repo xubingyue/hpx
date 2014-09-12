@@ -73,11 +73,12 @@ namespace hpx { namespace parallel { HPX_INLINE_NAMESPACE(v1)
                 task(policy.get_executor(), policy.get_chunk_size());
             detail::reverse r;
             return lcos::local::dataflow(
-                hpx::util::unwrapped([=]() mutable {
+                hpx::util::unwrapped([=]() mutable -> hpx::future<FwdIter>
+                {
                     hpx::future<void> f = r.call(p, first, last, non_seq());
                     std::advance(first, std::distance(new_first, last));
                     return f.then(
-                        [first](hpx::future<void> &&)
+                        [first] (hpx::future<void> &&) -> FwdIter
                         {
                             return first;
                         });

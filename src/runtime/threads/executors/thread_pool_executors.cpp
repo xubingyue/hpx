@@ -175,7 +175,9 @@ namespace hpx { namespace threads { namespace executors { namespace detail
         // update statistics
         ++tasks_scheduled_;
 
-        threads::detail::create_thread(&scheduler_, data, initial_state, run_now, ec); //-V601
+        threads::thread_id_type id = threads::invalid_thread_id;
+        threads::detail::create_thread(&scheduler_, data, id, initial_state, //-V601
+            run_now, ec);
         if (ec) {
             --tasks_scheduled_;
             return;
@@ -200,8 +202,9 @@ namespace hpx { namespace threads { namespace executors { namespace detail
             this, std::move(f)), desc);
         data.stacksize = threads::get_stack_size(stacksize);
 
-        thread_id_type id = threads::detail::create_thread( //-V601
-            &scheduler_, data, suspended, true, ec);
+        threads::thread_id_type id = threads::invalid_thread_id;
+        threads::detail::create_thread( //-V601
+            &scheduler_, data, id, suspended, true, ec);
         if (ec) return;
         HPX_ASSERT(invalid_thread_id != id);    // would throw otherwise
 
@@ -234,8 +237,9 @@ namespace hpx { namespace threads { namespace executors { namespace detail
             this, std::move(f)), desc);
         data.stacksize = threads::get_stack_size(stacksize);
 
-        thread_id_type id = threads::detail::create_thread( //-V601
-            &scheduler_, data, suspended, true, ec);
+        threads::thread_id_type id = threads::invalid_thread_id;
+        threads::detail::create_thread( //-V601
+            &scheduler_, data, id, suspended, true, ec);
         if (ec) return;
         HPX_ASSERT(invalid_thread_id != id);    // would throw otherwise
 
@@ -314,7 +318,7 @@ namespace hpx { namespace threads { namespace executors { namespace detail
                 states_[virt_core], executed_threads, executed_thread_phases,
                 overall_times, thread_times, &suspend_back_into_calling_context);
 
-#if HPX_DEBUG != 0
+#ifdef HPX_DEBUG
             // the scheduling_loop is allowed to exit only if no more HPX
             // threads exist
             HPX_ASSERT(!scheduler_.get_thread_count(

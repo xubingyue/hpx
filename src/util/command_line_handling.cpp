@@ -234,15 +234,7 @@ namespace hpx { namespace util
                     throw std::logic_error("Requested more than "
                         BOOST_PP_STRINGIZE(HPX_MAX_CPU_COUNT)" --hpx:threads "
                         "to use for this application, use the option "
-                        "-DHPX_MAX_CPU_COUNT=<N> or "
-                        "-DHPX_USE_MORE_THAN_64_THREADS when configuring HPX.");
-                }
-#elif !defined(HPX_HAVE_MORE_THAN_64_THREADS)
-                if (threads > 64) {
-                    throw std::logic_error("Requested more than 64 "
-                        "--hpx:threads to use for this application, use the "
-                        "option -DHPX_MAX_CPU_COUNT=<N> or "
-                        "-DHPX_USE_MORE_THAN_64_THREADS when configuring HPX.");
+                        "-DHPX_MAX_CPU_COUNT=<N> when configuring HPX.");
                 }
 #endif
             }
@@ -764,8 +756,8 @@ namespace hpx { namespace util
                         "handle_print_bind",
                         boost::str(
                             boost::format("unexpected mismatch between "
-                                "binding reported from HWLOC(%1%) and HPX(%2%)"
-                            ) % boundcpu % pu_mask));
+                                "locality %1%: binding reported from HWLOC(%2%) and HPX(%3%) on thread %4%"
+                            ) % hpx::get_locality_id() % boundcpu % pu_mask % i));
                 }
             }
 

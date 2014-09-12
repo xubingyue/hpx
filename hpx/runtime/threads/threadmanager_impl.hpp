@@ -100,6 +100,9 @@ namespace hpx { namespace threads
         /// \param func   [in] The function or function object to execute as
         ///               the thread's function. This must have a signature as
         ///               defined by \a thread_function_type.
+        /// \param id     [out] This parameter will hold the id of the created
+        ///               thread. This id is guaranteed to be validly
+        ///               initialized before the thread function is executed.
         /// \param description [in] The value of this parameter allows to
         ///               specify a description of the thread to create. This
         ///               information is used for logging purposes mainly, but
@@ -120,10 +123,7 @@ namespace hpx { namespace threads
         ///               parameter \a run_now or the function \a
         ///               threadmanager#do_some_work is called). This parameter
         ///               is optional and defaults to \a true.
-        ///
-        /// \returns      The function returns the thread id of the newly
-        ///               created thread.
-        thread_id_type register_thread(thread_init_data& data,
+        void register_thread(thread_init_data& data, thread_id_type& id,
             thread_state_enum initial_state = pending,
             bool run_now = true, error_code& ec = throws);
 
@@ -420,7 +420,7 @@ namespace hpx { namespace threads
         ///                   back trace of the thread referenced by the \a id
         ///                   parameter. If the thread is not known to the
         ///                   thread-manager the return value will be the zero.
-#if HPX_THREAD_MAINTAIN_FULLBACKTRACE_ON_SUSPENSION != 0
+#ifdef HPX_THREAD_MAINTAIN_FULLBACKTRACE_ON_SUSPENSION
         char const* get_backtrace(thread_id_type const& id) const;
         char const* set_backtrace(thread_id_type const& id, char const* bt = 0);
 #else
@@ -428,7 +428,7 @@ namespace hpx { namespace threads
         util::backtrace const* set_backtrace(thread_id_type const& id, util::backtrace const* bt = 0);
 #endif
 
-#if HPX_THREAD_MAINTAIN_LOCAL_STORAGE
+#ifdef HPX_THREAD_MAINTAIN_LOCAL_STORAGE
         /// The get_thread_data function is part of the thread related
         /// API. It queries the currently stored thread specific data pointer.
         ///
@@ -452,12 +452,11 @@ namespace hpx { namespace threads
             std::size_t data, error_code& ec = throws);
 #endif
 
-#if HPX_THREAD_MAINTAIN_IDLE_RATES
         /// Get percent maintenance time in main thread-manager loop.
         boost::int64_t avg_idle_rate(bool reset);
         boost::int64_t avg_idle_rate(std::size_t num_thread, bool reset);
-#endif
-#if HPX_THREAD_MAINTAIN_CREATION_AND_CLEANUP_RATES
+
+#ifdef HPX_THREAD_MAINTAIN_CREATION_AND_CLEANUP_RATES
         boost::int64_t avg_creation_idle_rate(bool reset);
         boost::int64_t avg_cleanup_idle_rate(bool reset);
 #endif
@@ -484,7 +483,7 @@ namespace hpx { namespace threads
             scheduler_.on_error(num_thread, e);
         }
 
-#if HPX_THREAD_MAINTAIN_CUMULATIVE_COUNTS
+#ifdef HPX_THREAD_MAINTAIN_CUMULATIVE_COUNTS
         boost::int64_t get_executed_threads(
             std::size_t num = std::size_t(-1), bool reset = false);
         boost::int64_t get_executed_thread_phases(
@@ -541,11 +540,10 @@ namespace hpx { namespace threads
             performance_counters::counter_info const& info, error_code& ec);
         naming::gid_type thread_counts_counter_creator(
             performance_counters::counter_info const& info, error_code& ec);
-#if HPX_THREAD_MAINTAIN_IDLE_RATES
         naming::gid_type idle_rate_counter_creator(
             performance_counters::counter_info const& info, error_code& ec);
-#endif
-#if HPX_THREAD_MAINTAIN_QUEUE_WAITTIME
+
+#ifdef HPX_THREAD_MAINTAIN_QUEUE_WAITTIME
         naming::gid_type thread_wait_time_counter_creator(
             performance_counters::counter_info const& info, error_code& ec);
         naming::gid_type task_wait_time_counter_creator(

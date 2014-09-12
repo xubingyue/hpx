@@ -69,7 +69,7 @@ public:
     void deallocate(T* p)
     {
         mutex_type::scoped_lock l(mtx_);
-        if (max_size_ == std::atomic_size_t(-1) || heap_.size() < max_size_)
+        if (max_size_ == static_cast<std::size_t>(-1) || heap_.size() < max_size_)
             heap_.push(p);
         else
             delete [] p;
@@ -434,7 +434,7 @@ partition stepper_server::heat_part(partition const& left,
 
     hpx::future<partition_data> next_middle = middle_data.then(
         unwrapped(
-            [middle](partition_data const& m)
+            [middle](partition_data const& m) -> partition_data
             {
                 // All local operations are performed once the middle data of
                 // the previous time step becomes available.
@@ -451,7 +451,7 @@ partition stepper_server::heat_part(partition const& left,
         hpx::launch::async,
         unwrapped(
             [left, middle, right](partition_data next, partition_data const& l,
-                partition_data const& m, partition_data const& r)
+                partition_data const& m, partition_data const& r) -> partition
             {
                 // Calculate the missing boundary elements once the
                 // corresponding data has become available.

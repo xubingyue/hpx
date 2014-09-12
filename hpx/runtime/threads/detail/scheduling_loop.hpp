@@ -19,6 +19,14 @@
 #include <boost/ref.hpp>
 #include <boost/asio/deadline_timer.hpp>
 
+namespace hpx { namespace threads { namespace policies
+{
+    // We control whether to collect idle rates using this global bool.
+    // It will be set by any of the related performance counters. Once set it
+    // stays set, thus no race conditions will occur.
+    extern bool maintain_idle_rates;
+}}}
+
 namespace hpx { namespace threads { namespace detail
 {
     ///////////////////////////////////////////////////////////////////////
@@ -161,22 +169,23 @@ namespace hpx { namespace threads { namespace detail
         bool need_restore_state_;
     };
 
-#if HPX_THREAD_MAINTAIN_IDLE_RATES
     struct idle_collect_rate
     {
         idle_collect_rate(boost::uint64_t& tfunc_time, boost::uint64_t& exec_time)
-          : start_timestamp_(util::hardware::timestamp())
+          : start_timestamp_(policies::maintain_idle_rates ? util::hardware::timestamp() : 0)
           , tfunc_time_(tfunc_time)
           , exec_time_(exec_time)
         {}
 
         void collect_exec_time(boost::uint64_t timestamp)
         {
-            exec_time_ += util::hardware::timestamp() - timestamp;
+            if (policies::maintain_idle_rates)
+                exec_time_ += util::hardware::timestamp() - timestamp;
         }
         void take_snapshot()
         {
-            tfunc_time_ = util::hardware::timestamp() - start_timestamp_;
+            if (policies::maintain_idle_rates)
+                tfunc_time_ = util::hardware::timestamp() - start_timestamp_;
         }
 
         boost::uint64_t start_timestamp_;
@@ -188,7 +197,7 @@ namespace hpx { namespace threads { namespace detail
     struct exec_time_wrapper
     {
         exec_time_wrapper(idle_collect_rate& idle_rate)
-          : timestamp_(util::hardware::timestamp())
+          : timestamp_(policies::maintain_idle_rates ? util::hardware::timestamp() : 0)
           , idle_rate_(idle_rate)
         {}
         ~exec_time_wrapper()
@@ -213,22 +222,6 @@ namespace hpx { namespace threads { namespace detail
 
         idle_collect_rate& idle_rate_;
     };
-#else
-    struct idle_collect_rate
-    {
-        idle_collect_rate(boost::uint64_t&, boost::uint64_t&) {}
-    };
-
-    struct exec_time_wrapper
-    {
-        exec_time_wrapper(idle_collect_rate&) {}
-    };
-
-    struct tfunc_time_wrapper
-    {
-        tfunc_time_wrapper(idle_collect_rate&) {}
-    };
-#endif
 
     ///////////////////////////////////////////////////////////////////////////
     template <typename SchedulingPolicy>
@@ -286,7 +279,7 @@ namespace hpx { namespace threads { namespace detail
                             // thread returns new required state
                             // store the returned state in the thread
                             {
-#if HPX_HAVE_ITTNOTIFY != 0
+#ifdef HPX_HAVE_ITTNOTIFY
                                 util::itt::caller_context cctx(ctx);
                                 util::itt::undo_frame_context undoframe(fctx);
                                 util::itt::task task(domain, thrd->get_description());
@@ -297,7 +290,7 @@ namespace hpx { namespace threads { namespace detail
                                 thrd_stat = (*thrd)();
                             }
 
-#if HPX_THREAD_MAINTAIN_CUMULATIVE_COUNTS
+#ifdef HPX_THREAD_MAINTAIN_CUMULATIVE_COUNTS
                             ++executed_thread_phases;
 #endif
                         }
@@ -365,7 +358,7 @@ namespace hpx { namespace threads { namespace detail
                 // REVIEW: what has to be done with depleted HPX threads?
                 if (state_val == depleted || state_val == terminated)
                 {
-#if HPX_THREAD_MAINTAIN_CUMULATIVE_COUNTS
+#ifdef HPX_THREAD_MAINTAIN_CUMULATIVE_COUNTS
                     ++executed_threads;
 #endif
                     scheduler.SchedulingPolicy::destroy_thread(thrd, busy_loop_count);

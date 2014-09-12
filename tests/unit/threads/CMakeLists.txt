@@ -19,7 +19,7 @@ if(HPX_THREAD_MAINTAIN_LOCAL_STORAGE)
   set(tests ${tests} tss)
 endif()
 
-set(lockfree_fifo_FLAGS NOLIBS DEPENDENCIES ${BOOST_FOUND_LIBRARIES})
+set(lockfree_fifo_FLAGS NOLIBS DEPENDENCIES ${Boost_LIBRARIES})
 
 set(set_thread_state_PARAMETERS THREADS_PER_LOCALITY 4)
 
@@ -48,6 +48,8 @@ foreach(test ${tests})
   add_hpx_executable(${test}_test
                      SOURCES ${sources}
                      ${${test}_FLAGS}
+                     EXCLUDE_FROM_ALL
+                     HPX_PREFIX ${HPX_BUILD_PREFIX}
                      FOLDER "Tests/Unit/Threads")
 
   add_hpx_unit_test("threads" ${test} ${${test}_PARAMETERS})
@@ -63,4 +65,8 @@ foreach(test ${tests})
   add_hpx_pseudo_dependencies(tests.unit.threads.${test}
                               ${test}_test_exe)
 endforeach()
+
+set_property(TARGET lockfree_fifo_test_exe APPEND
+    PROPERTY COMPILE_DEFINITIONS
+    "HPX_NO_VERSION_CHECK")
 
