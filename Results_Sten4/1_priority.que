@@ -1,0 +1,138 @@
+#! /bin/bash
+#SBATCH -w ariel00
+#SBATCH -J 4sten-hi
+#SBATCH -o 4sten-hi.o%j
+#SBATCH -c 16
+#SBATCH -t 1-4
+#------------------------------------------------------------------
+#
+#Set up directory and intialize sweep variables
+
+que="local-priority"
+QUE="local-priority"
+TXT_DIR=/home/rraj/results/stencil9/$QUE/`date +"%b_%d"`
+mkdir -p $TXT_DIR
+cd $TXT_DIR
+
+BUILDS="release idle crcl_idle"
+BUILDS="idle"
+SCALES="strong"
+SAMPLES=2
+CORES="16"
+PROG="1d_stencil_4"
+BUILD_DIR="/home/rraj/build/priority_local"
+BIN_DIR="$BUILD_DIR/bin"
+#Number of points per partion
+NXK="160 320 640 1000 1250 1280 1600 2000 2500 3125 3200 4000 5000 6250 6400 \
+8000 10000 12500 15625 16000 20000 25000 31250 32000 40000 50000 62500  \
+78125 80000 100000 125000 156250 160000 200000 250000 312500 390625 \
+400000 500000 625000 781250 800000 1000000 1250000 1562500 2000000 2500000 \
+3125000 6250000 12500000 25000000 50000000 100000000"
+
+NPTOT=100000000    # total number of points strong scaling
+
+#FIX ************ NPF=NPS      # used for weak scaling NP=NPF*cores
+
+NT=50       # number of time steps (45 is default)
+
+#
+#run_ runs from build$1 and uses $2 scaling and counters_$1.cfg counter option file
+#
+function run_ {
+    DFILE=$DATA_DIR/$FILE-$1-$2-$SAMPLES
+    COUNT_FILE=$DFILE-count.txt
+    DATA_FILE=$DFILE.csv
+    COUNT_CFG="$HOME/scripts/counters_all_$1.cfg"
+    noh=""
+    head=1
+    echo "hpx_counter,NX,NP,NT,hpx_count,x4" >> $COUNT_FILE
+    for NX in $NXK
+    do 
+        NP=$((NPTOT/NX))
+        for ((j=1;j<=$SAMPLES;j++))
+        do
+            echo "OS_Threads,$NX,$NP,$NT,$cores" >> $COUNT_FILE
+            #   FIX for weak scale if [ $2 = "weak" ]; then NP=$(($cores*NPF)); fi
+            srun $BIN_DIR/$PROG $noh --nx=$NX --np=$NP --nt=$NT -t$cores    \
+                --hpx:queuing=$que                \
+                --hpx:options-file=$COUNT_CFG                 \
+                --hpx:print-counter-destination=$COUNT_FILE   \
+                >>$DATA_FILE
+            noh="--no-header"
+            
+    done
+done
+}
+#run_
+
+#
+#print_ prints information to txt file for these runs
+#
+function print_ {
+    printf "\tProgram: $BIN_DIR/$PROG \n" 
+    printf "\tOutput: $FILE-$build-$scale.csv \n" 
+    printf "\tCounter file: $COUNT_CFG \n"
+    cat $COUNT_CFG
+    printf "\n"
+    END=$(date +%s)
+    elapsed=$(($END - $START))
+    hr=$(( $elapsed/3600 ))
+    min=$(( ($elapsed%3600)/60 ))
+    sec=$(( ($elapsed%3600)%60 ))
+    printf "\tDuration: $hr hour(s) $min minute(s) $sec second(s) \n\n"
+    START=$END
+    
+    TOT_hr=$(( $TOT_hr + $hr + ($TOT_min + $min)/60  ))
+    TOT_min=$(( ($TOT_min + $min)%60 + ($TOT_sec + $sec)/60 ))
+    TOT_sec=$(( ($TOT_sec + $sec)%60 ))
+}
+#print_
+
+
+#
+#Run sweep
+
+TIME=`date "+%Y.%m.%d-%H.%M"`
+TOT_hr=0
+TOT_min=0
+TOT_sec=0
+
+FILE="sten4-$SAMPLES-`hostname`"
+exec 1>$TXT_DIR/$FILE.txt 
+printf "Submitted slurm job run_stencil4.slr on `hostname`" 
+printf " $SAMPLES samples, cores $CORES \n"
+
+for build in $BUILDS
+do
+    BIN_DIR="$BUILD_DIR/bin"
+    echo ""
+    echo $BIN_DIR
+    $BIN_DIR/hello_world -t1 -v
+done
+
+printf "\n\n"
+for cores in $CORES
+do
+    FILE="sten4-cores$cores-`hostname`"
+    for build in $BUILDS
+    do
+        DATA_DIR=$TXT_DIR/$build-$SAMPLES
+        mkdir -p $DATA_DIR
+        cd $DATA_DIR
+    
+        printf " For $build build:\n" 
+        BIN_DIR="$BUILD_DIR/bin"
+        for scale in $SCALES
+        do
+            printf "\tUsing $scale scaling:\n"
+            START=$(date +%s)
+            run_ $build $scale
+            print_
+        done
+    done
+done
+
+
+END=$(date +%s)
+printf " Total duration of runs: $TOT_hr hour(s),"
+printf " $TOT_min minute(s) $TOT_sec second(s) \n"
