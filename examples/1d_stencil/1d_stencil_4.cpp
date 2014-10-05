@@ -206,6 +206,8 @@ struct stepper
 ///////////////////////////////////////////////////////////////////////////////
 int hpx_main(boost::program_options::variables_map& vm)
 {
+    //Start active counters 
+    hpx::start_active_counters();
     boost::uint64_t np = vm["np"].as<boost::uint64_t>();   // Number of partitions.
     boost::uint64_t nx = vm["nx"].as<boost::uint64_t>();   // Number of grid points.
     boost::uint64_t nt = vm["nt"].as<boost::uint64_t>();   // Number of steps.
@@ -219,6 +221,8 @@ int hpx_main(boost::program_options::variables_map& vm)
 
     // Measure execution time.
     boost::uint64_t t = hpx::util::high_resolution_clock::now();
+    //Reset active counters
+    hpx::reset_active_counters();
 
     // Execute nt time steps on nx grid points and print the final solution.
     hpx::future<stepper::space> result = step.do_work(np, nx, nt);
@@ -226,6 +230,8 @@ int hpx_main(boost::program_options::variables_map& vm)
     stepper::space solution = result.get();
     hpx::wait_all(solution);
 
+    //Stop active counters 
+    hpx::stop_active_counters();
     boost::uint64_t elapsed = hpx::util::high_resolution_clock::now() - t;
 
     // Print the final solution
