@@ -16,16 +16,22 @@
 #include <hpx/parallel/execution_policy.hpp>
 #include <hpx/parallel/algorithms/detail/algorithm_result.hpp>
 #include <hpx/parallel/algorithms/detail/dispatch.hpp>
+#include <hpx/parallel/util/detail/handle_remote_exceptions.hpp>
 
 #include <boost/preprocessor/repeat.hpp>
 #include <boost/preprocessor/iterate.hpp>
 #include <boost/preprocessor/repetition/enum_params.hpp>
 #include <boost/preprocessor/repetition/enum_binary_params.hpp>
 
+///////////////////////////////////////////////////////////////////////////////
 #define HPX_DISPATCH_DECAY_ARG(Z, N, D)                                       \
     typename hpx::util::decay<BOOST_PP_CAT(D, N)>::type                       \
     /**/
 #define HPX_DISPATCH_ARG(Z, N, D) BOOST_PP_CAT(D, N) const&                   \
+    /**/
+#define HPX_MAP_TO_LOCAL_ITERATOR(Z, N, D)                                    \
+    ::hpx::traits::segmented_local_iterator_traits<                           \
+        BOOST_PP_CAT(Arg, N)>::base(BOOST_PP_CAT(arg, N))                     \
     /**/
 
 #define BOOST_PP_ITERATION_PARAMS_1                                           \
@@ -34,6 +40,7 @@
 
 #include BOOST_PP_ITERATE()
 
+#undef HPX_MAP_TO_LOCAL_ITERATOR
 #undef HPX_DISPATCH_ARG
 #undef HPX_DISPATCH_DECAY_ARG
 
@@ -59,7 +66,8 @@ namespace hpx { namespace parallel { namespace util { namespace remote
         sequential(Algo const& algo, ExPolicy const& policy,
             BOOST_PP_ENUM_BINARY_PARAMS(N, Arg, const& arg))
         {
-            return algo.call(policy, BOOST_PP_ENUM_PARAMS(N, arg),
+            return algo.call(policy,
+                BOOST_PP_ENUM(N, HPX_MAP_TO_LOCAL_ITERATOR, _),
                 boost::mpl::true_());
         }
 
@@ -69,7 +77,8 @@ namespace hpx { namespace parallel { namespace util { namespace remote
         parallel(Algo const& algo, ExPolicy const& policy,
             BOOST_PP_ENUM_BINARY_PARAMS(N, Arg, const& arg))
         {
-            return algo.call(policy, BOOST_PP_ENUM_PARAMS(N, arg),
+            return algo.call(policy,
+                BOOST_PP_ENUM(N, HPX_MAP_TO_LOCAL_ITERATOR, _),
                 boost::mpl::false_());
         }
     };
@@ -143,8 +152,24 @@ namespace hpx { namespace parallel { namespace util { namespace remote
     dispatch(id_type const& id, Algo && algo, ExPolicy const& policy,
         IsSeq is_seq, HPX_ENUM_FWD_ARGS(N, Arg, arg))
     {
-        return dispatch_async(id, std::forward<Algo>(algo), policy, is_seq,
-            HPX_ENUM_FORWARD_ARGS(N, Arg, arg)).get();
+        // synchronously invoke remote operation
+        future<typename Algo::result_type> f =
+            dispatch_async(id, std::forward<Algo>(algo), policy, is_seq,
+                HPX_ENUM_FORWARD_ARGS(N, Arg, arg));
+        f.wait();
+
+        // handle any remote exceptions
+        if (f.has_exception())
+        {
+            std::list<boost::exception_ptr> errors;
+            parallel::util::detail::handle_remote_exceptions<
+                    ExPolicy
+                >::call(f.get_exception_ptr(), errors);
+
+            HPX_ASSERT(errors.empty());
+            boost::throw_exception(exception_list(std::move(errors)));
+        }
+        return f.get();
     }
 }}}}
 

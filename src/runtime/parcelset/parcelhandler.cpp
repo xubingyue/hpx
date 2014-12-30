@@ -13,6 +13,7 @@
 #include <hpx/util/io_service_pool.hpp>
 #include <hpx/util/safe_lexical_cast.hpp>
 #include <hpx/util/mpi_environment.hpp>
+#include <hpx/util/stringstream.hpp>
 #include <hpx/runtime/naming/resolver_client.hpp>
 #include <hpx/runtime/parcelset/parcelhandler.hpp>
 #include <hpx/runtime/threads/threadmanager.hpp>
@@ -186,11 +187,11 @@ namespace hpx { namespace parcelset
         parcels_->add_parcel(p);
     }
 
-    parcelhandler::parcelhandler(naming::resolver_client& resolver,
+    parcelhandler::parcelhandler(
             threads::threadmanager_base* tm, parcelhandler_queue_base* policy,
             HPX_STD_FUNCTION<void(std::size_t, char const*)> const& on_start_thread,
             HPX_STD_FUNCTION<void()> const& on_stop_thread)
-      : resolver_(resolver),
+      : resolver_(0),
         pports_(connection_last),
         endpoints_(connection_last),
         tm_(tm),
@@ -339,7 +340,7 @@ namespace hpx { namespace parcelset
             type = connection_tcp;
         }
 
-        return pports_[type];
+        return pports_[type]; //-V108
     }
 
 
@@ -452,7 +453,7 @@ namespace hpx { namespace parcelset
     {
         BOOST_FOREACH(locality const & loc, endpoints)
         {
-            boost::shared_ptr<parcelport> pp = pports_[loc.get_type()];
+            boost::shared_ptr<parcelport> pp = pports_[loc.get_type()]; //-V108
             if (!pp) {
                 HPX_THROW_EXCEPTION(network_error,
                     "parcelhandler::remove_from_connection_cache",
@@ -501,12 +502,14 @@ namespace hpx { namespace parcelset
 
     naming::resolver_client& parcelhandler::get_resolver()
     {
-        return resolver_;
+        HPX_ASSERT(resolver_ != 0);
+        return *resolver_;
     }
 
     naming::gid_type const& parcelhandler::get_locality() const
     {
-        return resolver_.get_local_locality();
+        HPX_ASSERT(resolver_ != 0);
+        return resolver_->get_local_locality();
     }
 
     bool parcelhandler::get_raw_remote_localities(
@@ -515,7 +518,8 @@ namespace hpx { namespace parcelset
     {
         std::vector<naming::gid_type> allprefixes;
 
-        bool result = resolver_.get_localities(allprefixes, type, ec);
+        HPX_ASSERT(resolver_ != 0);
+        bool result = resolver_->get_localities(allprefixes, type, ec);
         if (ec || !result) return false;
 
         std::remove_copy(allprefixes.begin(), allprefixes.end(),
@@ -528,7 +532,8 @@ namespace hpx { namespace parcelset
         std::vector<naming::gid_type>& locality_ids,
         components::component_type type, error_code& ec) const
     {
-        bool result = resolver_.get_localities(locality_ids, type, ec);
+        HPX_ASSERT(resolver_ != 0);
+        bool result = resolver_->get_localities(locality_ids, type, ec);
         if (ec || !result) return false;
 
         return !locality_ids.empty();
@@ -540,11 +545,37 @@ namespace hpx { namespace parcelset
         mutex_type::scoped_lock l(resolved_endpoints_mtx_);
         resolved_endpoints_type::iterator lit = resolved_endpoints_.find(dest_gid);
 
-        if(lit == resolved_endpoints_.end())
+        if (lit == resolved_endpoints_.end())
         {
-            HPX_THROW_EXCEPTION(network_error, "parcelhandler::find_appropriate_destination",
-                "The locality gid cannot be resolved to a valid endpoint");
-            return locality();
+            HPX_ASSERT(resolver_ != 0);
+
+            // FIXME: get error here
+            endpoints_type eps;
+            {
+                hpx::util::scoped_unlock<mutex_type::scoped_lock> ull(l);
+                future<endpoints_type> feps = resolver_->resolve_locality_async(dest_gid);
+
+                if(0 == threads::get_self_ptr())
+                {
+                    while(!feps.is_ready()) ;
+                }
+                eps = feps.get();
+            }
+            if(eps.empty())
+            {
+                hpx::util::osstream oss;
+                oss << "The locality gid cannot be resolved to a valid endpoint.\n"
+                    << "Got locality " << dest_gid << " (" << get_locality() << ") . Available endpoints:\n";
+                BOOST_FOREACH(resolved_endpoints_type::value_type const & endpoints, resolved_endpoints_)
+                {
+                    oss << "    " << endpoints.first << ": " << endpoints.second << "\n";
+                }
+                HPX_THROW_EXCEPTION(network_error, "parcelhandler::find_appropriate_destination",
+                    hpx::util::osstream_get_string(oss));
+                return locality();
+            }
+
+            lit = resolved_endpoints_.insert(lit, std::make_pair(dest_gid, std::move(eps)));
         }
         endpoints_type const & dest_endpoints = lit->second;
 
@@ -609,7 +640,7 @@ namespace hpx { namespace parcelset
 #endif
 
         HPX_THROW_EXCEPTION(network_error, "parcelhandler::find_appropriate_destination",
-            "The locality gid cannot be resolved to a valid endpoint.");
+            "The locality gid cannot be resolved to a valid endpoint. No valid parcelport configured.");
         return locality();
     }
 
@@ -641,6 +672,14 @@ namespace hpx { namespace parcelset
         {
             resolved_endpoints_[resolved.first] = resolved.second;
         }
+    }
+
+    // this function  will be called right after pre_main
+    void parcelhandler::set_resolved_localities(
+        naming::gid_type const& gid, endpoints_type const& endpoints)
+    {
+        mutex_type::scoped_lock l(resolved_endpoints_mtx_);
+        resolved_endpoints_[gid] = endpoints;
     }
 
     /// Return the reference to an existing io_service
@@ -705,7 +744,8 @@ namespace hpx { namespace parcelset
 #if !defined(HPX_SUPPORT_MULTIPLE_PARCEL_DESTINATIONS)
         if (!addrs[0])
         {
-            resolved_locally = resolver_.resolve_local(ids[0], addrs[0]);
+            HPX_ASSERT(resolver_ != 0);
+            resolved_locally = resolver_->resolve_local(ids[0], addrs[0]);
         }
 #else
         std::size_t size = p.size();
@@ -716,13 +756,14 @@ namespace hpx { namespace parcelset
             return;
         }
 
+        HPX_ASSERT(resolver_ != 0);
         if (1 == size) {
             if (!addrs[0])
-                resolved_locally = resolver_.resolve_local(ids[0], addrs[0]);
+                resolved_locally = resolver_->resolve_local(ids[0], addrs[0]);
         }
         else {
             boost::dynamic_bitset<> locals;
-            resolved_locally = resolver_.resolve_local(ids, addrs, size, locals);
+            resolved_locally = resolver_->resolve_local(ids, addrs, size, locals);
         }
 #endif
 
@@ -756,7 +797,9 @@ namespace hpx { namespace parcelset
         // At least one of the addresses is locally unknown, route the parcel
         // to the AGAS managing the destination.
         ++count_routed_;
-        resolver_.route(p, f);
+
+        HPX_ASSERT(resolver_ != 0);
+        resolver_->route(p, f);
     }
 
     std::size_t parcelhandler::get_outgoing_queue_length(bool reset) const

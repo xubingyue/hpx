@@ -111,13 +111,13 @@ void handle_values_tests_with_policy(std::size_t size, std::size_t localities,
     DistPolicy const& policy)
 {
     {
-    hpx::vector<T> v(size, policy);
-    handle_values_tests(v);
+        hpx::vector<T> v(size, policy);
+        handle_values_tests(v);
     }
 
     {
-    hpx::vector<T> v(size, policy);
-    handle_values_tests_distributed_access(v);
+        hpx::vector<T> v(size, policy);
+        handle_values_tests_distributed_access(v);
     }
 }
 
@@ -158,9 +158,9 @@ void handle_values_tests()
         hpx::block_cyclic(3, localities));
     handle_values_tests_with_policy<T>(length, localities.size(),
         hpx::block_cyclic(localities));
-    handle_values_tests_with_policy<T>(length, 4, hpx::block_cyclic(4, 3));
-    handle_values_tests_with_policy<T>(length, 4,
-        hpx::block_cyclic(4, localities, 3));
+    handle_values_tests_with_policy<T>(length, 4, hpx::block_cyclic(4, 3)); //-V112
+    handle_values_tests_with_policy<T>(length, 4, //-V112
+        hpx::block_cyclic(4, localities, 3)); //-V112
     handle_values_tests_with_policy<T>(length, localities.size(),
         hpx::block_cyclic(localities, 3));
 }
