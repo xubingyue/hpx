@@ -400,7 +400,7 @@ namespace hpx { namespace parallel { HPX_INLINE_NAMESPACE(v1)
                     call_with_index(
                         policy, make_zip_iterator(first, flags.get()), count,
                         [f](std::size_t base_idx,
-                        zip_iterator part_begin, std::size_t part_size)
+                        zip_iterator part_begin, std::size_t part_size) -> pair_type
                         {
                             std::size_t curr = 0;
                             util::loop_n(part_begin, part_size,
@@ -420,12 +420,16 @@ namespace hpx { namespace parallel { HPX_INLINE_NAMESPACE(v1)
                             return std::make_pair(curr, base_idx);
                         },
                         hpx::util::unwrapped(
-                            [=](std::vector<pair_type> && r)
+                            [=](std::vector<pair_type> && r) -> OutIter
                             {
-                                return 
+                                /*
+                                return  
                                     copy_if_helper(policy,
                                         std::forward<std::vector<pair_type> >(r),
                                         first, count, dest, flags);
+                                */
+                                return
+                                    dest;
                             })
                     );
             }
