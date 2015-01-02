@@ -102,15 +102,13 @@ namespace hpx { namespace parallel { namespace util
                     {
                         if (exec)
                         {
-                            workitems.push_back(hpx::async(exec, f1, *data_it,
+                            workitems.push_back(hpx::async(exec, f1, *data_it++,
                                 first, chunk_size));
-                            ++data_it;
                         }
                         else
                         {
                             workitems.push_back(hpx::async(hpx::launch::fork, f1,
-                                *data_it, first, chunk_size));
-                            ++data_it;
+                                *data_it++, first, chunk_size));
                         }
                         count -= chunk_size;
                         std::advance(first, chunk_size);
@@ -197,69 +195,6 @@ namespace hpx { namespace parallel { namespace util
         template <typename R, typename Result>
         struct static_partitioner<parallel_task_execution_policy, R, Result>
         {
-            /*
-            template <typename FwdIter, typename F1, typename F2, typename Data>
-            static R call_with_data(
-                parallel_task_execution_policy const& policy, FwdIter first,
-                std::size_t count, F1 && f1, F2 && f2, std::size_t chunk_size,
-                Data && data)
-            {
-                typename hpx::util::decay<Data>::type::const_iterator data_it = boost::begin(data);
-
-                std::vector<hpx::future<Result> > workitems;
-                std::list<boost::exception_ptr> errors;
-
-                try {
-                    workitems.reserve(count / chunk_size + 1);
-
-                    threads::executor exec = policy.get_executor();
-                    while (count > chunk_size)
-                    {
-                        if (exec)
-                        {
-                            workitems.push_back(hpx::async(exec, f1, *data_it,
-                                first, chunk_size));
-                            ++data_it;
-                        }
-                        else
-                        {
-                            workitems.push_back(hpx::async(hpx::launch::fork, f1,
-                                *data_it, first, chunk_size));
-                            ++data_it;
-                        }
-                        count -= chunk_size;
-                        std::advance(first, chunk_size);
-                    }
-
-                    // execute last chunk directly
-                    if (count != 0)
-                    {
-                        workitems.push_back(hpx::async(hpx::launch::sync,
-                            std::forward<F1>(f1), *data_it++,
-                            first, count));
-                        std::advance(first, count);
-                    }
-                }
-                catch (std::bad_alloc const&) {
-                    return hpx::make_exceptional_future<R>(
-                        boost::current_exception());
-                }
-                catch (...) {
-                    errors.push_back(boost::current_exception());
-                }
-
-                // wait for all tasks to finish
-                return hpx::lcos::local::dataflow(
-                    [f2, errors](std::vector<hpx::future<Result> > && r) mutable -> R
-                    {
-                        detail::handle_local_exceptions<
-                                parallel_task_execution_policy
-                            >::call(r, errors);
-                        return f2(std::move(r));
-                    },
-                    std::move(workitems));
-            }*/
-
             template <typename FwdIter, typename F1, typename F2>
             static hpx::future<R> call(
                 parallel_task_execution_policy const& policy,
@@ -389,7 +324,7 @@ namespace hpx { namespace parallel { namespace util
 
                 // wait for all tasks to finish
                 return hpx::lcos::local::dataflow(
-                    [f2, errors](std::vector<hpx::future<Result> > && r) mutable
+                    [f2, errors](std::vector<hpx::future<Result> > && r) mutable -> R
                     {
                         detail::handle_local_exceptions<
                             parallel_task_execution_policy>

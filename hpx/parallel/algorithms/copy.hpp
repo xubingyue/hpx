@@ -341,25 +341,25 @@ namespace hpx { namespace parallel { HPX_INLINE_NAMESPACE(v1)
             return util::partitioner<ExPolicy, FwdIter2, void>::call_with_data(policy,
                     make_zip_iterator(first, flags.get()), count,
                     [dest](Pair const& data, zip_iterator part_begin,
-                        std::size_t part_size)
+                        std::size_t part_size) mutable
                     {
+                        /*
                         FwdIter2 out_iter = dest;
                         std::advance(out_iter, std::get<0>(data));
 
                         util::loop_n(part_begin, part_size,
-                        [&dest, &out_iter](zip_iterator d)
+                        [&dest, &out_iter](zip_iterator d) mutable
                         {
                             using hpx::util::get;
                             if(get<1>(*d))
                             *out_iter++ = get<0>(*d);
                         });
-
-                        return data;
+                        */
                     },
                     hpx::util::unwrapped(
-                        [=](std::vector<Pair> &&) -> FwdIter2
+                        [=](std::vector<hpx::future<void> > &&) mutable
                         {
-                            std::advance(dest, std::get<0>(sum));
+                            //std::advance(dest, std::get<0>(sum));
                             return dest;
                         }
                     ),
@@ -402,7 +402,7 @@ namespace hpx { namespace parallel { HPX_INLINE_NAMESPACE(v1)
                         {
                             std::size_t curr = 0;
                             util::loop_n(part_begin, part_size,
-                            [&curr, &f](zip_iterator d)
+                            [&curr, &f](zip_iterator d) mutable
                             {
                                 using hpx::util::get;
                                 if(f(get<0>(*d)))
@@ -418,11 +418,11 @@ namespace hpx { namespace parallel { HPX_INLINE_NAMESPACE(v1)
                             return std::make_pair(curr, base_idx);
                         },
                         hpx::util::unwrapped(
-                            [=](std::vector<pair_type> && r)
+                            [=](std::vector<pair_type> && r) mutable
                             {
-                                    return copy_if_helper(policy,
-                                        std::forward<std::vector<pair_type> >(r),
-                                        first, count, dest, flags);
+                                return copy_if_helper(policy,
+                                    std::forward<std::vector<pair_type> >(r),
+                                    first, count, dest, flags);
                             })
                     );
             }

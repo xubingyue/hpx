@@ -124,7 +124,7 @@ namespace hpx { namespace parallel { HPX_INLINE_NAMESPACE(v1)
     ///           returns \a InIter otherwise.
     ///           The \a find algorithm returns the first element in the range
     ///           [first,last) that is equal to \a val.
-    ///           If no such element in the range of [first,last) is equal to
+    ///           If no such element in the r ange of [first,last) is equal to
     ///           \a val, then the algorithm returns \a last.
     ///
     template <typename ExPolicy, typename InIter, typename T>
