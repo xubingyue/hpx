@@ -197,6 +197,7 @@ namespace hpx { namespace parallel { namespace util
         template <typename R, typename Result>
         struct static_partitioner<parallel_task_execution_policy, R, Result>
         {
+            /*
             template <typename FwdIter, typename F1, typename F2, typename Data>
             static R call_with_data(
                 parallel_task_execution_policy const& policy, FwdIter first,
@@ -257,7 +258,7 @@ namespace hpx { namespace parallel { namespace util
                         return f2(std::move(r));
                     },
                     std::move(workitems));
-            }
+            }*/
 
             template <typename FwdIter, typename F1, typename F2>
             static hpx::future<R> call(
@@ -460,7 +461,7 @@ namespace hpx { namespace parallel { namespace util
 
                 // wait for all tasks to finish
                 return hpx::lcos::local::dataflow(
-                    [f2, errors](std::vector<hpx::future<Result> > && r) mutable -> R
+                    [f2, errors](std::vector<hpx::future<Result> > && r) mutable
                     {
                         detail::handle_local_exceptions<
                                 parallel_task_execution_policy
