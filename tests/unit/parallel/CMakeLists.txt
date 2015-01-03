@@ -27,6 +27,7 @@ set(tests
     foreachn
     generate
     generaten
+    lexicographical_compare
     max_element
     min_element
     minmax_element
