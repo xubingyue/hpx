@@ -14,13 +14,46 @@
 template <typename ExPolicy, typename IteratorTag>
 void test_lexicographical_compare1(ExPolicy const& policy, IteratorTag)
 {
+    BOOST_STATIC_ASSERT(hpx::parallel::is_execution_policy<ExPolicy>::value);
 
+    typedef std::vector<std::size_t>::iterator base_iterator;
+    typedef test::test_iterator<base_iterator, IteratorTag> iterator;
+
+    std::vector<std::size_t> c(10007);
+    std::fill(boost::begin(c), boost::end(c), 0);
+
+    //d is lexicographical less than c
+    std::vector<std::size_t d(10006);
+    std::fill(boost::begin(d), boost::end(d), 0);
+
+    bool res = hpx::parallel::lexicographical_compare(policy,
+        iterator(boost::begin(c)), iterator(boost::end(c)),
+        boost::begin(d), boost::end(d));
+
+    HPX_TEST(res == false);
 }
 
 template <typename ExPolicy, typename IteratorTag>
 void test_lexicographical_compare(ExPolicy const& p, IteratorTag)
 {
+    typedef std::vector<std::size_t>::iterator base_iterator;
+    typedef test::test_iterator<base_iterator, IteratorTag> iterator;
 
+    std::vector<std::size_t> c(10007);
+    std::fill(boost::begin(c), boost::end(c), 0);
+
+    //d is lexicographical less than c
+    std::vector<std::size_t d(10006);
+    std::fill(boost::begin(d), boost::end(d), 0);
+
+    hpx::future<bool> f = 
+        hpx::parallel::lexicographical_compare(p,
+            iterator(boost::begin(c)), iterator(boost::end(c)),
+            boost::begin(d), boost::end(d));
+
+    f.wait();
+
+    HPX_TEST(f.get() == false);
 }
 
 template <typename IteratorTag>
@@ -52,13 +85,78 @@ void lexicographical_compare_test1()
 template <typename ExPolicy, typename IteratorTag>
 void test_lexicographical_compare_exception(ExPolicy const& policy, IteratorTag)
 {
+    BOOST_STATIC_ASSERT(hpx::parallel::is_execution_policy<ExPolicy>::value);
 
+    typedef std::vector<std::size_t>::iterator base_iterator;
+    typedef test::decorated_iterator<base_iterator, IteratorTag>
+
+    std::vector<std::size_t> c(10007);
+    std::fill(boost::begin(c), boost::end(c), std::rand() + 1);
+
+    std::vector<std::size_t> h(10006);
+    std::fill(boost::begin(h), boost::end(h), std::rand() + 1);
+
+    bool caught_exception = false;
+    try {
+        hpx::parallel::lexicographical_compare(policy,
+            decorated_iterator(
+                boost::begin(c),
+                [](){ throw std::runtime_error("test"); }),
+            decorated_iterator(
+                boost::end(c),
+                [](){ throw std::runtime_error("test"); }),
+            boost::begin(h), boost::end(h));
+        HPX_TEST(false);
+    }
+    catch(hpx::exception_list const& e) {
+        caught_exception = true;
+        test::test_num_exceptions<ExPolicy, IteratorTag>::call(policy, e);
+    }
+    catch(...) {
+        HPX_TEST(false);
+    }
+
+    HPX_TEST(caught_exception);
 }
 
 template <typename ExPolicy, typename IteratorTag>
 void test_lexicographical_compare_async_exception(ExPolicy const& p, IteratorTag)
 {
+    typedef std::vector<std::size_t>::iterator base_iterator;
+    typedef test::decorated_iterator<base_iterator, IteratorTag>
 
+    std::vector<std::size_t> c(10007);
+    std::fill(boost::begin(c), boost::end(c), std::rand() + 1);
+
+    std::vector<std::size_t> h(10006);
+    std::fill(boost::begin(h), boost::end(h), std::rand() + 1);
+
+    bool caught_exception = false;
+    try {
+        hpx::future<decorated_iterator> f =
+            hpx::parallel::lexicographical_compare(p,
+                decorated_iterator(
+                    boost::begin(c),
+                    [](){ throw std::runtime_error("test"); }),
+                decorated_iterator(
+                    boost::end(c),
+                    [](){ throw std::runtime_error("test"); }),
+            boost::begin(h), boost::end(h));
+        f.get();
+
+        HPX_TEST(false);
+    }
+    catch(hpx::exception_list const& e) {
+        caught_exception = true;
+        test::test_num_exceptions<
+            ExPolicy, IteratorTag
+        >::call(p, e);
+    }
+    catch(...) {
+        HPX_TEST(false);
+    }
+
+    HPX_TEST(caught_exception);
 }
 
 template <typename IteratorTag>
@@ -89,13 +187,75 @@ void lexicographical_compare_exception_test()
 template <typename ExPolicy, typename IteratorTag>
 void test_lexicographical_compare_bad_alloc(ExPolicy const& policy, IteratorTag)
 {
+    BOOST_STATIC_ASSERT(hpx::parallel::is_execution_policy<ExPolicy>::value);
 
+    typedef std::vector<std::size_t>::iterator base_iterator;
+    typedef test::decorated_iterator<base_iterator, IteratorTag>
+
+    std::vector<std::size_t> c(10007);
+    std::fill(boost::begin(c), boost::end(c), std::rand() + 1);
+
+    std::vector<std::size_t> h(10006);
+    std::fill(boost::begin(h), boost::end(h), std::rand() + 1);
+
+    bool caught_bad_alloc = false;
+    try {
+        hpx::parallel::lexicographical_compare(policy,
+            decorated_iterator(
+                boost::begin(c),
+                [](){ throw std::bad_alloc(); }),
+            decorated_iterator(
+                boost::end(c),
+                [](){ throw std::bad_alloc(); }),
+            boost::begin(h), boost::end(h));
+        HPX_TEST(false);
+    }
+    catch(std::bad_alloc const&) {
+        caught_bad_alloc = true;
+    }
+    catch(...) {
+        HPX_TEST(false);
+    }
+
+    HPX_TEST(caught_bad_alloc);
 }
 
 template <typename ExPolicy, typename IteratorTag>
 void test_lexicographical_compare_async_bad_alloc(ExPolicy const& p, IteratorTag)
 {
+    typedef std::vector<std::size_t>::iterator base_iterator;
+    typedef test::decorated_iterator<base_iterator, IteratorTag>
 
+    std::vector<std::size_t> c(10007);
+    std::fill(boost::begin(c), boost::end(c), std::rand() + 1);
+
+    std::vector<std::size_t> h(10006);
+    std::fill(boost::begin(h), boost::end(h), std::rand() + 1);
+
+    bool caught_bad_alloc = false;
+    try {
+        hpx::future<decorated_iterator> f =
+            hpx::parallel::lexicographical_compare(p,
+                decorated_iterator(
+                    boost::begin(c),
+                    [](){ throw std::bad_alloc(); }),
+                decorated_iterator(
+                    boost::end(c),
+                    [](){ throw std::bad_alloc(); }),
+                boost::begin(h), boost::end(h));
+
+        f.get();
+
+        HPX_TEST(false);
+    }
+    catch(std::bad_alloc const&) {
+        caught_bad_alloc = true;
+    }
+    catch(...) {
+        HPX_TEST(false);
+    }
+
+    HPX_TEST(caught_bad_alloc);
 }
 
 template <typename IteratorTag>
