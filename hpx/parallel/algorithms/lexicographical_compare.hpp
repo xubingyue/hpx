@@ -32,48 +32,62 @@ namespace hpx { namespace parallel { HPX_INLINE_NAMESPACE(v1)
     namespace detail 
     {
         /// \cond NOINTERNAL
-        struct lexicographical_compare : public detail::algorithm<lexicographical_compare>
+        struct lexicographical_compare : public detail::algorithm<lexicographical_compare, bool>
         {
             lexicographical_compare()
                 : lexicographical_compare::algorithm("lexicographical_compare")
             {}
 
-            template <typename ExPolicy, typename InIter1, typename InIter2,
+           template <typename ExPolicy, typename InIter1, typename InIter2,
                 typename Pred>
            static bool
            sequential(ExPolicy const&, InIter1 first1, InIter1 last1, InIter2 first2,
                 InIter2 last2, Pred && pred)
             {
-                return std::lexicographical_cast(first1, last1, first2, last2, pred);
+                return std::lexicographical_compare(first1, last1, first2, last2, pred);
             }
 
             template <typename ExPolicy, typename InIter1, typename InIter2,
                 typename Pred>
-            static typename detail::algorithm_result<ExPolicy>::type
-            parallel(ExPolicy const& policy, InIter1 first1, InIter1 last1, InIer2 first2,
+            static typename detail::algorithm_result<ExPolicy, bool>::type
+            parallel(ExPolicy const& policy, InIter1 first1, InIter1 last1, InIter2 first2,
                 InIter2 last2, Pred && pred)
             {
                 typedef hpx::util::zip_iterator<InIter1, InIter2> zip_iterator;
                 typedef typename zip_iterator::reference reference;
 
-                return
-                    for_each<bool>().call(
-                        policy, 
-                        hpx::util::make_zip_iterator(first1, first2),
-                        hpx::util::make_zip_iterator(last1, last2),
-                        [pred, last1](zip_iterator t) {
-                            if(pred(hpx::util::get<0>(*t), hpx::util::get<1>(*t)))
-                                return true;
-                            if(pred(hpx::util::get<1>(*t), hpx::util::get<0>(*t)))
-                                return false;
-                            if((hpx::util::get_iter<0>(t) == last1) && 
-                               (hpx::util::get_iter<1>(t) != last2))
-                               return true;
-                            else
-                                return false;
-                        },
-                        boost::mpl::false_());
+                std::size_t count1 = std::distance(first1, last1);
+                std::size_t count2 = std::distance(first2, last2);
+                std::size_t count = count1 > count2 ? count2 : count1;
+
+                // An empty range is lexicographically less than any non-empty range
+                if(count1 == 0)
+                    return detail::algorithm_result<ExPolicy, bool>::get(true);
+                if(count2 == 0)
+                    return detail::algorithm_result<ExPolicy, bool>::get(false);
+
+                util::cancellation_token<std::size_t> tok(count);
+
+                return util::partitioner<ExPolicy, bool, bool>::
+                    call_with_index(
+                        policy, hpx::util::make_zip_iterator(first1, first2), count,
+                        [pred, tok](std::size_t base_idx, reference t,
+                            std::size_t part_size) -> bool
+                        {
+                            bool res;
+                            util::loop_idx_n(
+                                base_idx, t, part_size, tok,
+                                [&tok, &res](reference v, std::size_t i)
+                                {
                         
+                                });
+                            return res;
+                            return true;
+                        },
+                        [](std::vector<hpx::future<bool> > && rr) -> bool
+                        {
+                            return true;
+                        });
             }
         };
         /// \endcond
@@ -106,7 +120,8 @@ namespace hpx { namespace parallel { HPX_INLINE_NAMESPACE(v1)
 
         typedef typename boost::mpl::or_<
             is_sequential_execution_policy<ExPolicy>,
-            boost::is_same<std::input_iterator_tag, iterator_category>
+            boost::is_same<std::input_iterator_tag, iterator_category1>,
+            boost::is_same<std::input_iterator_tag, iterator_category2>
         >::type is_seq;
 
         return detail::lexicographical_compare().call(

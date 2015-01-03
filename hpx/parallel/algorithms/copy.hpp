@@ -343,7 +343,6 @@ namespace hpx { namespace parallel { HPX_INLINE_NAMESPACE(v1)
                     [dest](Pair const& data, zip_iterator part_begin,
                         std::size_t part_size) mutable
                     {
-                        /*
                         FwdIter2 out_iter = dest;
                         std::advance(out_iter, std::get<0>(data));
 
@@ -354,7 +353,6 @@ namespace hpx { namespace parallel { HPX_INLINE_NAMESPACE(v1)
                             if(get<1>(*d))
                             *out_iter++ = get<0>(*d);
                         });
-                        */
                     },
                     hpx::util::unwrapped(
                         [=](std::vector<hpx::future<void> > &&) mutable

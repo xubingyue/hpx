@@ -23,7 +23,7 @@ void test_lexicographical_compare1(ExPolicy const& policy, IteratorTag)
     std::fill(boost::begin(c), boost::end(c), 0);
 
     //d is lexicographical less than c
-    std::vector<std::size_t d(10006);
+    std::vector<std::size_t> d(10006);
     std::fill(boost::begin(d), boost::end(d), 0);
 
     bool res = hpx::parallel::lexicographical_compare(policy,
@@ -34,7 +34,7 @@ void test_lexicographical_compare1(ExPolicy const& policy, IteratorTag)
 }
 
 template <typename ExPolicy, typename IteratorTag>
-void test_lexicographical_compare(ExPolicy const& p, IteratorTag)
+void test_lexicographical_compare1_async(ExPolicy const& p, IteratorTag)
 {
     typedef std::vector<std::size_t>::iterator base_iterator;
     typedef test::test_iterator<base_iterator, IteratorTag> iterator;
@@ -43,7 +43,7 @@ void test_lexicographical_compare(ExPolicy const& p, IteratorTag)
     std::fill(boost::begin(c), boost::end(c), 0);
 
     //d is lexicographical less than c
-    std::vector<std::size_t d(10006);
+    std::vector<std::size_t> d(10006);
     std::fill(boost::begin(d), boost::end(d), 0);
 
     hpx::future<bool> f = 
@@ -79,6 +79,7 @@ void lexicographical_compare_test1()
 {
     test_lexicographical_compare1<std::random_access_iterator_tag>();
     test_lexicographical_compare1<std::forward_iterator_tag>();
+    test_lexicographical_compare1<std::input_iterator_tag>();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -89,6 +90,7 @@ void test_lexicographical_compare_exception(ExPolicy const& policy, IteratorTag)
 
     typedef std::vector<std::size_t>::iterator base_iterator;
     typedef test::decorated_iterator<base_iterator, IteratorTag>
+        decorated_iterator;
 
     std::vector<std::size_t> c(10007);
     std::fill(boost::begin(c), boost::end(c), std::rand() + 1);
@@ -124,6 +126,7 @@ void test_lexicographical_compare_async_exception(ExPolicy const& p, IteratorTag
 {
     typedef std::vector<std::size_t>::iterator base_iterator;
     typedef test::decorated_iterator<base_iterator, IteratorTag>
+        decorated_iterator;
 
     std::vector<std::size_t> c(10007);
     std::fill(boost::begin(c), boost::end(c), std::rand() + 1);
@@ -133,7 +136,7 @@ void test_lexicographical_compare_async_exception(ExPolicy const& p, IteratorTag
 
     bool caught_exception = false;
     try {
-        hpx::future<decorated_iterator> f =
+        hpx::future<bool> f =
             hpx::parallel::lexicographical_compare(p,
                 decorated_iterator(
                     boost::begin(c),
@@ -191,6 +194,7 @@ void test_lexicographical_compare_bad_alloc(ExPolicy const& policy, IteratorTag)
 
     typedef std::vector<std::size_t>::iterator base_iterator;
     typedef test::decorated_iterator<base_iterator, IteratorTag>
+        decorated_iterator;
 
     std::vector<std::size_t> c(10007);
     std::fill(boost::begin(c), boost::end(c), std::rand() + 1);
@@ -225,6 +229,7 @@ void test_lexicographical_compare_async_bad_alloc(ExPolicy const& p, IteratorTag
 {
     typedef std::vector<std::size_t>::iterator base_iterator;
     typedef test::decorated_iterator<base_iterator, IteratorTag>
+        decorated_iterator;
 
     std::vector<std::size_t> c(10007);
     std::fill(boost::begin(c), boost::end(c), std::rand() + 1);
@@ -234,7 +239,7 @@ void test_lexicographical_compare_async_bad_alloc(ExPolicy const& p, IteratorTag
 
     bool caught_bad_alloc = false;
     try {
-        hpx::future<decorated_iterator> f =
+        hpx::future<bool> f =
             hpx::parallel::lexicographical_compare(p,
                 decorated_iterator(
                     boost::begin(c),
@@ -295,9 +300,9 @@ int hpx_main(boost::program_options::variables_map& vm)
     std::srand(seed);
 
     lexicographical_compare_test1();
-    lexicographical_compare_test2();
-    lexicographical_compare_test3();
-    lexicographical_compare_test4();
+    //lexicographical_compare_test2();
+    //lexicographical_compare_test3();
+    //lexicographical_compare_test4();
     lexicographical_compare_exception_test();
     lexicographical_compare_bad_alloc_test();
     return hpx::finalize();
