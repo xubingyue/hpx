@@ -62,28 +62,36 @@ namespace hpx { namespace parallel { HPX_INLINE_NAMESPACE(v1)
 
                 // An empty range is lexicographically less than any non-empty range
                 if(count1 == 0)
+                {
                     return detail::algorithm_result<ExPolicy, bool>::get(true);
+                }
+
                 if(count2 == 0)
+                {
                     return detail::algorithm_result<ExPolicy, bool>::get(false);
+                }
 
                 util::cancellation_token<std::size_t> tok(count);
 
                 using hpx::util::make_zip_iterator;
+                using hpx::util::get;
                 return util::partitioner<ExPolicy, bool, bool>::
                     call_with_index(
                         policy, make_zip_iterator(first1, first2), count,
-                        [pred, tok](std::size_t base_idx, zip_iterator part_begin,
-                            std::size_t part_size) -> bool
+                        [pred, tok, last1, last2](std::size_t base_idx, 
+                            zip_iterator part_begin, std::size_t part_size) -> bool
                         {
+                            for(/**/; part_size != 0; 
+                                (void) --part_size, ++part_begin, ++base_idx)
+                            {
+                                if(pred(get<0>(*part_begin), get<1>(*part_begin)))
+                                    return true;
+                                if(pred(get<1>(*part_begin), get<0>(*part_begin)))
+                                    return false;
+                            }
+                            return ((get_iter<0, InIter1>(part_begin) == last1) &&
+                                   (get_iter<1, InIter2>(part_begin) == last2));
                             
-                            bool res;
-                            util::loop_idx_n(
-                                base_idx, part_begin, part_size, tok,
-                                [&tok, &res](reference v, std::size_t i)
-                                {
-                        
-                                });
-                            return res;
                         },
                         [](std::vector<hpx::future<bool> > && rr) -> bool
                         {
