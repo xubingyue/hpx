@@ -68,21 +68,22 @@ namespace hpx { namespace parallel { HPX_INLINE_NAMESPACE(v1)
 
                 util::cancellation_token<std::size_t> tok(count);
 
+                using hpx::util::make_zip_iterator;
                 return util::partitioner<ExPolicy, bool, bool>::
                     call_with_index(
-                        policy, hpx::util::make_zip_iterator(first1, first2), count,
-                        [pred, tok](std::size_t base_idx, reference t,
+                        policy, make_zip_iterator(first1, first2), count,
+                        [pred, tok](std::size_t base_idx, zip_iterator part_begin,
                             std::size_t part_size) -> bool
                         {
+                            
                             bool res;
                             util::loop_idx_n(
-                                base_idx, t, part_size, tok,
+                                base_idx, part_begin, part_size, tok,
                                 [&tok, &res](reference v, std::size_t i)
                                 {
                         
                                 });
                             return res;
-                            return true;
                         },
                         [](std::vector<hpx::future<bool> > && rr) -> bool
                         {
