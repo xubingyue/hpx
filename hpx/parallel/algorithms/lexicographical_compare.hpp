@@ -136,7 +136,7 @@ namespace hpx { namespace parallel { HPX_INLINE_NAMESPACE(v1)
 
         return detail::lexicographical_compare().call(
             std::forward<ExPolicy>(policy),
-            first1, last1, first2, last2, detail::equal_to(),
+            first1, last1, first2, last2, detail::less_than(),
             is_seq());
     }
 
@@ -167,7 +167,8 @@ namespace hpx { namespace parallel { HPX_INLINE_NAMESPACE(v1)
 
         typedef typename boost::mpl::or_<
             is_sequential_execution_policy<ExPolicy>,
-            boost::is_same<std::input_iterator_tag, iterator_category>
+            boost::is_same<std::input_iterator_tag, iterator_category1>,
+            boost::is_same<std::input_iterator_tag, iterator_category2>
         >::type is_seq;
 
         return detail::lexicographical_compare().call(
