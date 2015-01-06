@@ -354,13 +354,11 @@ namespace hpx { namespace parallel { HPX_INLINE_NAMESPACE(v1)
                             *out_iter++ = get<0>(*d);
                         });
                     },
-                    hpx::util::unwrapped(
-                        [=](std::vector<hpx::future<void> > &&) mutable
-                        {
-                            //std::advance(dest, std::get<0>(sum));
-                            return dest;
-                        }
-                    ),
+                    [=](std::vector<hpx::future<void> > &&) mutable
+                    {
+                        std::advance(dest, std::get<0>(sum));
+                        return dest;
+                    },
                     chunk_size, results);
         }
 
@@ -416,12 +414,12 @@ namespace hpx { namespace parallel { HPX_INLINE_NAMESPACE(v1)
                             return std::make_pair(curr, base_idx);
                         },
                         hpx::util::unwrapped(
-                            [=](std::vector<pair_type> && r) mutable
-                            {
-                                return copy_if_helper(policy,
-                                    std::forward<std::vector<pair_type> >(r),
-                                    first, count, dest, flags);
-                            })
+                        [=](std::vector<pair_type> && r) mutable
+                        {
+                            return copy_if_helper(policy,
+                                std::forward<std::vector<pair_type> >(r),
+                                first, count, dest, flags);
+                        })
                     );
             }
         };
