@@ -95,7 +95,8 @@ namespace hpx { namespace parallel { HPX_INLINE_NAMESPACE(v1)
                         },
                         [](std::vector<hpx::future<bool> > && rr) -> bool
                         {
-                            return true;
+                            std::vector<bool> r = hpx::util::unwrapped(rr);
+                            return std::all_of(boost::begin(r), boost::end(r), [](bool v){ return v; });
                         });
             }
         };
