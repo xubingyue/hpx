@@ -82,6 +82,153 @@ void lexicographical_compare_test1()
     test_lexicographical_compare1<std::input_iterator_tag>();
 }
 
+////////////////////////////////////////////////////////////////////////////
+template <typename ExPolicy, typename IteratorTag>
+void test_lexicographical_compare2(ExPolicy const& policy, IteratorTag)
+{
+    BOOST_STATIC_ASSERT(hpx::parallel::is_execution_policy<ExPolicy>::value);
+
+    typedef std::vector<std::size_t>::iterator base_iterator;
+    typedef test::test_iterator<base_iterator, IteratorTag> iterator;
+
+    // lexicographically equal, so false
+    std::vector<std::size_t> c(10007);
+    std::fill(boost::begin(c), boost::end(c), 0);
+
+    //d is lexicographical less than c
+    std::vector<std::size_t> d(10006);
+    std::fill(boost::begin(d), boost::end(d), 0);
+
+    bool res = hpx::parallel::lexicographical_compare(policy,
+        iterator(boost::begin(c)), iterator(boost::end(c)),
+        boost::begin(d), boost::end(d));
+
+    HPX_TEST(res == false);
+}
+
+template <typename ExPolicy, typename IteratorTag>
+void test_lexicographical_compare2_async(ExPolicy const& p, IteratorTag)
+{
+    typedef std::vector<std::size_t>::iterator base_iterator;
+    typedef test::test_iterator<base_iterator, IteratorTag> iterator;
+
+    std::vector<std::size_t> c(10007);
+    std::iota(boost::begin(c), boost::end(c), 0);
+
+    //d is lexicographical less than c
+    std::vector<std::size_t> d(10007);
+    std::iota(boost::begin(d), boost::end(d), 0);
+
+    hpx::future<bool> f = 
+        hpx::parallel::lexicographical_compare(p,
+            iterator(boost::begin(c)), iterator(boost::end(c)),
+            boost::begin(d), boost::end(d));
+
+    f.wait();
+
+    HPX_TEST(f.get() == false);
+}
+
+template <typename IteratorTag>
+void test_lexicographical_compare2()
+{
+    using namespace hpx::parallel;
+    test_lexicographical_compare2(seq, IteratorTag());
+    test_lexicographical_compare2(par, IteratorTag());
+    test_lexicographical_compare2(par_vec, IteratorTag());
+
+    test_lexicographical_compare2_async(seq(task), IteratorTag());
+    test_lexicographical_compare2_async(par(task), IteratorTag());
+
+
+    test_lexicographical_compare2(execution_policy(seq), IteratorTag());
+    test_lexicographical_compare2(execution_policy(par), IteratorTag());
+    test_lexicographical_compare2(execution_policy(par_vec), IteratorTag());
+    test_lexicographical_compare2(execution_policy(seq(task)), IteratorTag());
+    test_lexicographical_compare2(execution_policy(par(task)), IteratorTag());
+}
+
+void lexicographical_compare_test2()
+{
+    test_lexicographical_compare2<std::random_access_iterator_tag>();
+    test_lexicographical_compare2<std::forward_iterator_tag>();
+    test_lexicographical_compare2<std::input_iterator_tag>();
+}
+
+////////////////////////////////////////////////////////////////////////////
+template <typename ExPolicy, typename IteratorTag>
+void test_lexicographical_compare3(ExPolicy const& policy, IteratorTag)
+{
+    BOOST_STATIC_ASSERT(hpx::parallel::is_execution_policy<ExPolicy>::value);
+
+    typedef std::vector<std::size_t>::iterator base_iterator;
+    typedef test::test_iterator<base_iterator, IteratorTag> iterator;
+
+    // C is lexicographically less due to the (std::rand() % size + 1)th
+    // element being less than D
+    std::vector<std::size_t> c(10007);
+    std::iota(boost::begin(c), boost::end(c), 0);
+    c[(std::rand() % 10006) + 1] = 0;
+
+    std::vector<std::size_t> d(10007);
+    std::iota(boost::begin(d), boost::end(d), 0);
+
+    bool res = hpx::parallel::lexicographical_compare(policy,
+        iterator(boost::begin(c)), iterator(boost::end(c)),
+        boost::begin(d), boost::end(d));
+
+    HPX_TEST(res == true);
+}
+
+template <typename ExPolicy, typename IteratorTag>
+void test_lexicographical_compare3_async(ExPolicy const& p, IteratorTag)
+{
+    typedef std::vector<std::size_t>::iterator base_iterator;
+    typedef test::test_iterator<base_iterator, IteratorTag> iterator;
+
+    std::vector<std::size_t> c(10007);
+    std::iota(boost::begin(c), boost::end(c), 0);
+    c[(std::rand() % 10006) + 1] = 0;
+
+    std::vector<std::size_t> d(10007);
+    std::iota(boost::begin(d), boost::end(d), 0);
+
+    hpx::future<bool> f = 
+        hpx::parallel::lexicographical_compare(p,
+            iterator(boost::begin(c)), iterator(boost::end(c)),
+            boost::begin(d), boost::end(d));
+
+    f.wait();
+
+    HPX_TEST(f.get() == true);
+}
+
+template <typename IteratorTag>
+void test_lexicographical_compare3()
+{
+    using namespace hpx::parallel;
+    test_lexicographical_compare3(seq, IteratorTag());
+    test_lexicographical_compare3(par, IteratorTag());
+    test_lexicographical_compare3(par_vec, IteratorTag());
+
+    test_lexicographical_compare3_async(seq(task), IteratorTag());
+    test_lexicographical_compare3_async(par(task), IteratorTag());
+
+
+    test_lexicographical_compare3(execution_policy(seq), IteratorTag());
+    test_lexicographical_compare3(execution_policy(par), IteratorTag());
+    test_lexicographical_compare3(execution_policy(par_vec), IteratorTag());
+    test_lexicographical_compare3(execution_policy(seq(task)), IteratorTag());
+    test_lexicographical_compare3(execution_policy(par(task)), IteratorTag());
+}
+
+void lexicographical_compare_test3()
+{
+    test_lexicographical_compare3<std::random_access_iterator_tag>();
+    test_lexicographical_compare3<std::forward_iterator_tag>();
+    test_lexicographical_compare3<std::input_iterator_tag>();
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 template <typename ExPolicy, typename IteratorTag>
 void test_lexicographical_compare_exception(ExPolicy const& policy, IteratorTag)
@@ -93,10 +240,10 @@ void test_lexicographical_compare_exception(ExPolicy const& policy, IteratorTag)
         decorated_iterator;
 
     std::vector<std::size_t> c(10007);
-    std::fill(boost::begin(c), boost::end(c), std::rand() + 1);
+    std::iota(boost::begin(c), boost::end(c), 0);
 
-    std::vector<std::size_t> h(10006);
-    std::fill(boost::begin(h), boost::end(h), std::rand() + 1);
+    std::vector<std::size_t> h(10007);
+    std::iota(boost::begin(h), boost::end(h), 0);
 
     bool caught_exception = false;
     try {

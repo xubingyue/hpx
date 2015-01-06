@@ -61,12 +61,12 @@ namespace hpx { namespace parallel { HPX_INLINE_NAMESPACE(v1)
                 std::size_t count = count1 > count2 ? count2 : count1;
 
                 // An empty range is lexicographically less than any non-empty range
-                if(count1 == 0)
+                if(count1 == 0 && count2 != 0)
                 {
                     return detail::algorithm_result<ExPolicy, bool>::get(true);
                 }
 
-                if(count2 == 0)
+                if(count2 == 0 && count1 != 0)
                 {
                     return detail::algorithm_result<ExPolicy, bool>::get(false);
                 }
