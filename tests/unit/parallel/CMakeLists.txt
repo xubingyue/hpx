@@ -1,4 +1,4 @@
-# Copyright (c) 2014 Hartmut Kaiser
+# Copyright (c) 2014-2015 Hartmut Kaiser
 #
 # Distributed under the Boost Software License, Version 1.0. (See accompanying
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -15,6 +15,7 @@ set(tests
     countif
     equal
     equal_binary
+    exclusive_scan
     fill
     filln
     find
@@ -28,6 +29,7 @@ set(tests
     generate
     generaten
     lexicographical_compare
+    inclusive_scan
     max_element
     min_element
     minmax_element
@@ -50,6 +52,8 @@ set(tests
     task_region
     transform
     transform_binary
+    transform_exclusive_scan
+    transform_inclusive_scan
     transform_reduce
     uninitialized_copy
     uninitialized_copyn
