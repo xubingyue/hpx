@@ -20,6 +20,7 @@
 
 #include <algorithm>
 #include <iterator>
+#include <atomic>
 
 #include <boost/static_assert.hpp>
 #include <boost/utility/enable_if.hpp>
@@ -337,6 +338,8 @@ namespace hpx { namespace parallel { HPX_INLINE_NAMESPACE(v1)
             Pair sum = sequential_exclusive_scan(boost::begin(results),
                 boost::end(results), &add_pairs);
 
+            results.insert(boost::begin(results), Pair(0, 0));
+
             using hpx::util::make_zip_iterator;
             return util::partitioner<ExPolicy, FwdIter2, void>::call_with_data(policy,
                     make_zip_iterator(first, flags.get()), count,
@@ -387,31 +390,33 @@ namespace hpx { namespace parallel { HPX_INLINE_NAMESPACE(v1)
 
                 std::size_t count = std::distance(first,last);
                 boost::shared_array<char> flags(new char[count]);
+                std::atomic<int> curr(0);
 
                 typedef std::pair<std::size_t, std::size_t> pair_type;
 
                 using hpx::util::make_zip_iterator;
                 return util::partitioner<ExPolicy, OutIter, pair_type>::call_with_index(
                         policy, make_zip_iterator(first, flags.get()), count,
-                        [f](std::size_t base_idx,
+                        [f, &curr](std::size_t base_idx,
                         zip_iterator part_begin, std::size_t part_size) -> pair_type
                         {
-                            std::size_t curr = 0;
+                            std::size_t t_curr = 0;
                             util::loop_n(part_begin, part_size,
-                            [&curr, &f](zip_iterator d) mutable
+                            [&t_curr, &f](zip_iterator d) mutable
                             {
                                 using hpx::util::get;
                                 if(f(get<0>(*d)))
                             {
                                 get<1>(*d) = 1;
-                                ++curr;
+                                ++t_curr;
                             }
                             else
                             {
                                 get<1>(*d) = 0;
                             }
                             });
-                            return std::make_pair(curr, base_idx);
+                            curr += t_curr;
+                            return std::make_pair(curr.load(), base_idx);
                         },
                         hpx::util::unwrapped(
                         [=](std::vector<pair_type> && r) mutable
