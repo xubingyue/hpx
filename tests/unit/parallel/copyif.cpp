@@ -15,7 +15,27 @@ template <typename ExPolicy, typename IteratorTag>
 void test_copy_if(ExPolicy const& policy, IteratorTag)
 {
     BOOST_STATIC_ASSERT(hpx::parallel::is_execution_policy<ExPolicy>::value);
+    
 
+    int h[6] = {0, 1, 2, 3, 4, 5};
+    int j[6] = {-1, -1, -1, -1, -1, -1};
+
+    hpx::parallel::copy_if(policy, boost::begin(h),
+        boost::end(h), boost::begin(j),
+        [](int i) 
+        {
+            return i > 0;
+        }
+    );
+
+    for(auto n : h)
+        std::cout << n << " ";
+    std::cout << std::endl;
+
+    for(auto g : j)
+        std::cout << g << " ";
+    std::cout << std::endl;
+    /*
     typedef std::vector<int>::iterator base_iterator;
     typedef test::test_iterator<base_iterator, IteratorTag> iterator;
 
@@ -46,6 +66,7 @@ void test_copy_if(ExPolicy const& policy, IteratorTag)
     }));
 
     HPX_TEST_EQ(count, d.size());
+    */
 }
 
 template <typename ExPolicy, typename IteratorTag>
@@ -145,10 +166,10 @@ void test_copy_if()
 {
     using namespace hpx::parallel;
 
-    test_copy_if(seq, IteratorTag());
+    //test_copy_if(seq, IteratorTag());
     test_copy_if(par, IteratorTag());
-    test_copy_if(par_vec, IteratorTag());
-
+    //test_copy_if(par_vec, IteratorTag());
+/*
     test_copy_if_async(seq(task), IteratorTag());
     test_copy_if_async(par(task), IteratorTag());
 
@@ -172,13 +193,14 @@ void test_copy_if()
 
     test_copy_if_outiter(execution_policy(seq(task)), IteratorTag());
     test_copy_if_outiter(execution_policy(par(task)), IteratorTag());
+*/
 }
 
 void copy_if_test()
 {
     test_copy_if<std::random_access_iterator_tag>();
-    test_copy_if<std::forward_iterator_tag>();
-    test_copy_if<std::input_iterator_tag>();
+    //test_copy_if<std::forward_iterator_tag>();
+    //test_copy_if<std::input_iterator_tag>();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
