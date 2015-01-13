@@ -67,7 +67,6 @@ void test_lexicographical_compare1()
     test_lexicographical_compare1_async(seq(task), IteratorTag());
     test_lexicographical_compare1_async(par(task), IteratorTag());
 
-
     test_lexicographical_compare1(execution_policy(seq), IteratorTag());
     test_lexicographical_compare1(execution_policy(par), IteratorTag());
     test_lexicographical_compare1(execution_policy(par_vec), IteratorTag());
@@ -139,7 +138,6 @@ void test_lexicographical_compare2()
 
     test_lexicographical_compare2_async(seq(task), IteratorTag());
     test_lexicographical_compare2_async(par(task), IteratorTag());
-
 
     test_lexicographical_compare2(execution_policy(seq), IteratorTag());
     test_lexicographical_compare2(execution_policy(par), IteratorTag());
@@ -213,7 +211,6 @@ void test_lexicographical_compare3()
 
     test_lexicographical_compare3_async(seq(task), IteratorTag());
     test_lexicographical_compare3_async(par(task), IteratorTag());
-
 
     test_lexicographical_compare3(execution_policy(seq), IteratorTag());
     test_lexicographical_compare3(execution_policy(par), IteratorTag());
@@ -447,9 +444,9 @@ int hpx_main(boost::program_options::variables_map& vm)
     std::srand(seed);
 
     lexicographical_compare_test1();
-    //lexicographical_compare_test2();
-    //lexicographical_compare_test3();
-    //lexicographical_compare_test4();
+    lexicographical_compare_test2();
+    lexicographical_compare_test3();
+    lexicographical_compare_test4();
     lexicographical_compare_exception_test();
     lexicographical_compare_bad_alloc_test();
     return hpx::finalize();
