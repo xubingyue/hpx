@@ -78,9 +78,10 @@ namespace hpx { namespace parallel { HPX_INLINE_NAMESPACE(v1)
                 return util::partitioner<ExPolicy, bool, bool>::
                     call_with_index(
                         policy, make_zip_iterator(first1, first2), count,
-                        [pred, tok, last1, last2](std::size_t base_idx, 
+                        [pred, tok, &last1, &last2](std::size_t base_idx, 
                             zip_iterator part_begin, std::size_t part_size) -> bool
                         {
+                            
                             for(/**/; part_size != 0; 
                                 (void) --part_size, ++part_begin, ++base_idx)
                             {
@@ -89,15 +90,20 @@ namespace hpx { namespace parallel { HPX_INLINE_NAMESPACE(v1)
                                 if(pred(get<1>(*part_begin), get<0>(*part_begin)))
                                     return false;
                             }
-                            return ((get_iter<0, InIter1>(part_begin) == last1) &&
-                                   (get_iter<1, InIter2>(part_begin) == last2));
                             
+                            if(get_iter<0, InIter1>(part_begin) == last1 ||
+                               get_iter<1, InIter2>(part_begin) == last2)
+                                return (get_iter<0, InIter1>(part_begin) == last1) && 
+                                       (get_iter<1, InIter2>(part_begin) != last2);                            
+ 
+                            return true;
                         },
-                        [](std::vector<hpx::future<bool> > && rr) -> bool
+                        hpx::util::unwrapped(
+                        [](std::vector<bool> && r) -> bool
                         {
-                            std::vector<bool> r = hpx::util::unwrapped(rr);
-                            return std::all_of(boost::begin(r), boost::end(r), [](bool v){ return v; });
-                        });
+                            return std::any_of(boost::begin(r), boost::end(r), 
+                                [](bool v){ return v == false; }) == false;
+                        }));
             }
         };
         /// \endcond
