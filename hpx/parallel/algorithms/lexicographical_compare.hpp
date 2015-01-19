@@ -13,6 +13,7 @@
 #include <hpx/parallel/algorithms/detail/algorithm_result.hpp>
 #include <hpx/parallel/algorithms/detail/predicates.hpp>
 #include <hpx/parallel/algorithms/detail/dispatch.hpp>
+#include <hpx/parallel/algorithms/mismatch.hpp>
 #include <hpx/parallel/algorithms/for_each.hpp>
 #include <hpx/parallel/util/partitioner.hpp>
 #include <hpx/parallel/util/loop.hpp>
@@ -54,12 +55,12 @@ namespace hpx { namespace parallel { HPX_INLINE_NAMESPACE(v1)
                 InIter2 last2, Pred && pred)
             {
                 typedef hpx::util::zip_iterator<InIter1, InIter2> zip_iterator;
-                typedef typename zip_iterator::reference reference;
-
+                typedef typename zip_iterator::reference reference;            
+ 
                 std::size_t count1 = std::distance(first1, last1);
                 std::size_t count2 = std::distance(first2, last2);
-                std::size_t count = count1 > count2 ? count2 : count1;
-
+                std::size_t count = count1 < count2 ? count1 : count2;     
+        
                 // An empty range is lexicographically less than any non-empty range
                 if(count1 == 0 && count2 != 0)
                 {
@@ -70,40 +71,39 @@ namespace hpx { namespace parallel { HPX_INLINE_NAMESPACE(v1)
                 {
                     return detail::algorithm_result<ExPolicy, bool>::get(false);
                 }
-
+        
                 util::cancellation_token<std::size_t> tok(count);
 
-                using hpx::util::make_zip_iterator;
-                using hpx::util::get;
-                return util::partitioner<ExPolicy, bool, bool>::
+                return util::partitioner<ExPolicy, bool, void>::
                     call_with_index(
-                        policy, make_zip_iterator(first1, first2), count,
-                        [pred, tok, &last1, &last2](std::size_t base_idx, 
-                            zip_iterator part_begin, std::size_t part_size) -> bool
-                        {
-                            
-                            for(/**/; part_size != 0; 
-                                (void) --part_size, ++part_begin, ++base_idx)
-                            {
-                                if(pred(get<0>(*part_begin), get<1>(*part_begin)))
-                                    return true;
-                                if(pred(get<1>(*part_begin), get<0>(*part_begin)))
-                                    return false;
-                            }
-                            
-                            if(get_iter<0, InIter1>(part_begin) == last1 ||
-                               get_iter<1, InIter2>(part_begin) == last2)
-                                return (get_iter<0, InIter1>(part_begin) == last1) && 
-                                       (get_iter<1, InIter2>(part_begin) != last2);                            
- 
-                            return true;
+                        policy, hpx::util::make_zip_iterator(first1, first2),
+                        count, [pred, tok](std::size_t base_idx, 
+                        zip_iterator it, std::size_t part_count) mutable
+                        {   
+                            util::loop_idx_n(
+                                base_idx, it, part_count, tok,
+                                [&pred, &tok](reference t, std::size_t i)
+                                {
+                                    using hpx::util::get;
+                                    if((pred(get<0>(t), get<1>(t)) ||
+                                        pred(get<1>(t), get<0>(t))))
+                                        tok.cancel(i);
+                                });
                         },
-                        hpx::util::unwrapped(
-                        [](std::vector<bool> && r) -> bool
+                        [=, &last1, &last2]
+                        (std::vector<hpx::future<void> > &&) mutable -> bool
                         {
-                            return std::any_of(boost::begin(r), boost::end(r), 
-                                [](bool v){ return v == false; }) == false;
-                        }));
+                            std::size_t mismatched = tok.get_data();
+                            
+                            std::advance(first1, mismatched);
+                            std::advance(first2, mismatched);
+                            
+                            if(first1 != last1 && first2 != last2)
+                                return pred(*first1, *first2);
+                            else
+                                return first2 != last2;
+                            
+                        });
             }
         };
         /// \endcond

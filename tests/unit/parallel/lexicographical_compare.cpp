@@ -18,7 +18,7 @@ void test_lexicographical_compare1(ExPolicy const& policy, IteratorTag)
 
     typedef std::vector<std::size_t>::iterator base_iterator;
     typedef test::test_iterator<base_iterator, IteratorTag> iterator;
-
+    
     std::vector<std::size_t> c(10007);
     std::iota(boost::begin(c), boost::end(c), 0);
 
@@ -31,6 +31,7 @@ void test_lexicographical_compare1(ExPolicy const& policy, IteratorTag)
         boost::begin(d), boost::end(d));
 
     HPX_TEST(res == false);
+    
 }
 
 template <typename ExPolicy, typename IteratorTag>
@@ -54,7 +55,6 @@ void test_lexicographical_compare1_async(ExPolicy const& p, IteratorTag)
     f.wait();
 
     bool res = f.get();
-    std::cout << res << std::endl;
 
     HPX_TEST(res == false);
 }
@@ -65,23 +65,24 @@ void test_lexicographical_compare1()
     using namespace hpx::parallel;
     test_lexicographical_compare1(seq, IteratorTag());
     test_lexicographical_compare1(par, IteratorTag());
+    
     test_lexicographical_compare1(par_vec, IteratorTag());
     
     test_lexicographical_compare1_async(seq(task), IteratorTag());
     test_lexicographical_compare1_async(par(task), IteratorTag());
-
+    
     test_lexicographical_compare1(execution_policy(seq), IteratorTag());
     test_lexicographical_compare1(execution_policy(par), IteratorTag());
     test_lexicographical_compare1(execution_policy(par_vec), IteratorTag());
     test_lexicographical_compare1(execution_policy(seq(task)), IteratorTag());
-    test_lexicographical_compare1(execution_policy(par(task)), IteratorTag());
+    test_lexicographical_compare1(execution_policy(par(task)), IteratorTag()); 
 }
 
 void lexicographical_compare_test1()
 {
     test_lexicographical_compare1<std::random_access_iterator_tag>();
-    test_lexicographical_compare1<std::forward_iterator_tag>();
-    test_lexicographical_compare1<std::input_iterator_tag>();
+    //test_lexicographical_compare1<std::forward_iterator_tag>();
+    //test_lexicographical_compare1<std::input_iterator_tag>();
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -140,7 +141,6 @@ void test_lexicographical_compare2()
 
     test_lexicographical_compare2_async(seq(task), IteratorTag());
     test_lexicographical_compare2_async(par(task), IteratorTag());
-
 
     test_lexicographical_compare2(execution_policy(seq), IteratorTag());
     test_lexicographical_compare2(execution_policy(par), IteratorTag());
