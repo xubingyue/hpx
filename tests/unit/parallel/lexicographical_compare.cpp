@@ -215,7 +215,6 @@ void test_lexicographical_compare3()
     test_lexicographical_compare3_async(seq(task), IteratorTag());
     test_lexicographical_compare3_async(par(task), IteratorTag());
 
-
     test_lexicographical_compare3(execution_policy(seq), IteratorTag());
     test_lexicographical_compare3(execution_policy(par), IteratorTag());
     test_lexicographical_compare3(execution_policy(par_vec), IteratorTag());
