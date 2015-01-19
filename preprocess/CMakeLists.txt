@@ -30,8 +30,6 @@ endforeach()
 set(action_argument_limit_preprocessing_files
   "hpx/lcos/broadcast.hpp"
   "hpx/lcos/reduce.hpp"
-  "hpx/runtime/actions/construct_continuation_function_objects.hpp"
-  "hpx/runtime/actions/construct_continuation_functions.hpp"
   "hpx/runtime/applier/apply_implementations.hpp"
   "hpx/runtime/applier/apply_implementations_callback.hpp"
   "hpx/runtime/applier/apply_continue.hpp"
@@ -51,14 +49,6 @@ foreach(file ${action_argument_limit_preprocessing_files})
 endforeach()
 
 set(wait_argument_limit_preprocessing_files
-  "hpx/lcos/wait_all.hpp"
-  "hpx/lcos/wait_some.hpp"
-  "hpx/lcos/wait_any.hpp"
-  "hpx/lcos/wait_each.hpp"
-  "hpx/lcos/when_all.hpp"
-  "hpx/lcos/when_some.hpp"
-  "hpx/lcos/when_any.hpp"
-  "hpx/lcos/when_each.hpp"
   "hpx/runtime/components/memory_block.hpp")
 foreach(file ${wait_argument_limit_preprocessing_files})
   hpx_partial_preprocess_header(${file} LIMIT HPX_LIMIT)

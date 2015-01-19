@@ -80,9 +80,9 @@ set(doxygen_dependencies
     "${hpx_SOURCE_DIR}/hpx/parallel/algorithms/uninitialized_copy.hpp"
     "${hpx_SOURCE_DIR}/hpx/parallel/algorithms/uninitialized_fill.hpp"
     "${hpx_SOURCE_DIR}/hpx/runtime/get_ptr.hpp"
-    "${hpx_SOURCE_DIR}/hpx/runtime/actions/action_support.hpp"
+    "${hpx_SOURCE_DIR}/hpx/runtime/actions/basic_action.hpp"
+    "${hpx_SOURCE_DIR}/hpx/runtime/actions/component_action.hpp"
     "${hpx_SOURCE_DIR}/hpx/runtime/actions/plain_action.hpp"
-    "${hpx_SOURCE_DIR}/hpx/runtime/actions/component_non_const_action.hpp"
     "${hpx_SOURCE_DIR}/hpx/runtime/components/new.hpp"
     "${hpx_SOURCE_DIR}/hpx/runtime/components/copy_component.hpp"
     "${hpx_SOURCE_DIR}/hpx/runtime/components/migrate_component.hpp"
@@ -96,6 +96,8 @@ set(doxygen_dependencies
     "${hpx_SOURCE_DIR}/hpx/lcos/when_any.hpp"
     "${hpx_SOURCE_DIR}/hpx/lcos/wait_some.hpp"
     "${hpx_SOURCE_DIR}/hpx/lcos/when_some.hpp"
+    "${hpx_SOURCE_DIR}/hpx/lcos/wait_each.hpp"
+    "${hpx_SOURCE_DIR}/hpx/lcos/when_each.hpp"
     "${hpx_SOURCE_DIR}/hpx/performance_counters/manage_counter_type.hpp")
 
 
