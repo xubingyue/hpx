@@ -111,6 +111,7 @@ namespace hpx { namespace parallel { namespace util
                         HPX_ASSERT(chunk != 0);
 
                         if (exec)
+                        {
                             workitems.push_back(hpx::async(exec,
                                 f1, *data_it, first, chunk));
                         }
