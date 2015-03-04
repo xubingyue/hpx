@@ -10,6 +10,7 @@ set(subdirs
     build
     components
     diagnostics
+    header
     lcos
     parcelset
     performance_counters
