@@ -741,19 +741,16 @@ namespace hpx { namespace lcos
     private:
         struct invalidate
         {
-            explicit invalidate(future& f, bool reset_data = false)
-              : f_(f), reset_data_(reset_data)
+            explicit invalidate(future& f)
+              : f_(f)
             {}
 
             ~invalidate()
             {
-                if (reset_data_)
-                    f_.shared_state_->reset();
                 f_.shared_state_ = 0;
             }
 
             future& f_;
-            bool reset_data_;
         };
 
     private:
@@ -882,7 +879,7 @@ namespace hpx { namespace lcos
                     "this future has no valid shared state");
             }
 
-            invalidate on_exit(*this, true);
+            invalidate on_exit(*this);
 
             typedef typename shared_state_type::data_type data_type;
             data_type& data = this->shared_state_->get_result();
@@ -902,7 +899,7 @@ namespace hpx { namespace lcos
                 return detail::future_value<R>::get_default();
             }
 
-            invalidate on_exit(*this, true);
+            invalidate on_exit(*this);
 
             typedef typename shared_state_type::data_type data_type;
             data_type& data = this->shared_state_->get_result(ec);

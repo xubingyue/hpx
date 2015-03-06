@@ -545,7 +545,7 @@ namespace hpx { namespace lcos
         /// operation. Allows any subsequent set_data operation to succeed.
         void reset()
         {
-            (*impl_)->reset();
+            impl_ = new wrapping_type(new wrapped_type());
             future_obtained_ = false;
         }
 
@@ -655,7 +655,7 @@ namespace hpx { namespace lcos
         /// operation. Allows any subsequent set_data operation to succeed.
         void reset()
         {
-            (*impl_)->reset();
+            impl_ = new wrapping_type(new wrapped_type());
             future_obtained_ = false;
         }
 
